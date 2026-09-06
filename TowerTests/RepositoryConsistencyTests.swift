@@ -542,7 +542,6 @@ final class RepositoryConsistencyTests: XCTestCase {
 
         XCTAssertTrue(localSource.contains("if let selfConfigurationScheme = model.selfConfigurationScheme"))
         XCTAssertTrue(localSource.contains("scheme: selfConfigurationScheme"))
-        XCTAssertTrue(localSource.contains("showsInlineRefreshAction: false"))
         XCTAssertFalse(cardSource.contains("SelectionIndicator"))
         XCTAssertFalse(cardSource.contains("使用这套规则"))
         XCTAssertFalse(cardSource.contains("当前使用"))

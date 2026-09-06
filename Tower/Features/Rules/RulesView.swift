@@ -88,7 +88,6 @@ struct RulesView: View {
                     ruleCount: model.ruleCount(for: scheme),
                     isRefreshing: false,
                     isReady: true,
-                    showsInlineRefreshAction: true,
                     onCustomize: { customizationScheme = scheme },
                     onSelect: { model.selectScheme(scheme) },
                     onRefresh: nil,
@@ -104,7 +103,6 @@ struct RulesView: View {
                     ruleCount: model.ruleCount(for: selfConfigurationScheme),
                     isRefreshing: model.importingSchemeIDs.contains(selfConfigurationScheme.id),
                     isReady: model.isSchemeReady(selfConfigurationScheme),
-                    showsInlineRefreshAction: false,
                     onCustomize: { customizationScheme = selfConfigurationScheme },
                     onSelect: { model.selectScheme(selfConfigurationScheme) },
                     onRefresh: { Task { await model.refreshScheme(selfConfigurationScheme) } },
@@ -144,7 +142,6 @@ struct RulesView: View {
                         ruleCount: model.ruleCount(for: scheme),
                         isRefreshing: model.importingSchemeIDs.contains(scheme.id),
                         isReady: model.isSchemeReady(scheme),
-                        showsInlineRefreshAction: true,
                         onCustomize: { customizationScheme = scheme },
                         onSelect: { model.selectScheme(scheme) },
                         onRefresh: { Task { await model.refreshScheme(scheme) } },
@@ -353,7 +350,6 @@ private struct RuleSchemeCard: View {
     let ruleCount: Int
     let isRefreshing: Bool
     let isReady: Bool
-    let showsInlineRefreshAction: Bool
     let onCustomize: () -> Void
     let onSelect: () -> Void
     let onRefresh: (() -> Void)?
@@ -430,7 +426,7 @@ private struct RuleSchemeCard: View {
                 }
                 .accessibilityIdentifier("scheme-detail-\(scheme.id)")
 
-                if showsInlineRefreshAction, let onRefresh {
+                if let onRefresh {
                     Divider().frame(height: 22)
                     Button(action: onRefresh) {
                         Group {
