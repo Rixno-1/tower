@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     name: Build & Package IPA
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
       - name: Checkout repository
@@ -24,20 +24,14 @@ jobs:
 
       - name: Setup Build Environment
         run: |
-          # 查看当前可用的 Xcode 版本
-          ls -d /Applications/Xcode* || true
-          # 优先使用带完整 iOS SDK 的稳定版 Xcode
-          if [ -d "/Applications/Xcode_16.1.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.1.app
-          elif [ -d "/Applications/Xcode_16.0.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.0.app
-          fi
+          sudo xcode-select -s /Applications/Xcode_15.4.app || sudo xcode-select -s /Applications/Xcode_16.0.app || true
           xcodebuild -version
           xcodebuild -showsdks
 
       - name: Build Tower.app for iOS Device
         run: |
           mkdir -p build/output
+          set -o pipefail
           xcodebuild build \
             -project Tower.xcodeproj \
             -scheme Tower \
@@ -50,7 +44,15 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             CONFIGURATION_BUILD_DIR="$(pwd)/build/output" \
-            clean build
+            clean build 2>&1 | tee build/xcodebuild.log
+
+      - name: Inspect Build Log On Failure
+        if: failure()
+        run: |
+          echo "=== Top 50 Error Lines from Build Log ==="
+          grep -i -E "error:|fatal error:|\*\* BUILD FAILED \*\*" build/xcodebuild.log -A 2 -B 2 | head -n 100 || true
+          echo "=== Last 100 lines of log ==="
+          tail -n 100 build/xcodebuild.log || true
       - name: Package unsigned IPA
         run: |
           APP_PATH="build/output/Tower.app"
