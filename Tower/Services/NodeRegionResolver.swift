@@ -374,25 +374,119 @@ enum NodeRegionResolver {
     }
 
     static func displayName(for node: ProxyNode) -> String {
-        guard let repaired = repairedName(for: node) else {
-            return node.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitized = NodeAdSanitizer.sanitize(node.name)
+        let effectiveNode = ProxyNode(
+            id: node.id,
+            sourceID: node.sourceID,
+            kind: node.kind,
+            name: sanitized,
+            server: node.server,
+            port: node.port,
+            cipher: node.cipher,
+            password: node.password,
+            uuid: node.uuid,
+            plugin: node.plugin,
+            pluginOptions: node.pluginOptions,
+            transport: node.transport,
+            tls: node.tls,
+            sni: node.sni,
+            hostHeader: node.hostHeader,
+            path: node.path,
+            alpn: node.alpn,
+            skipCertificateVerification: node.skipCertificateVerification,
+            realityPublicKey: node.realityPublicKey,
+            realityShortID: node.realityShortID,
+            fingerprint: node.fingerprint,
+            flow: node.flow,
+            protocolName: node.protocolName,
+            protocolParam: node.protocolParam,
+            obfs: node.obfs,
+            obfsParam: node.obfsParam,
+            congestionControl: node.congestionControl,
+            udpRelayMode: node.udpRelayMode,
+            zeroRTT: node.zeroRTT,
+            version: node.version,
+            upMbps: node.upMbps,
+            downMbps: node.downMbps,
+            wireGuardPrivateKey: node.wireGuardPrivateKey,
+            wireGuardPublicKey: node.wireGuardPublicKey,
+            wireGuardPreSharedKey: node.wireGuardPreSharedKey,
+            wireGuardIPv4: node.wireGuardIPv4,
+            wireGuardIPv6: node.wireGuardIPv6,
+            wireGuardAllowedIPs: node.wireGuardAllowedIPs,
+            wireGuardReserved: node.wireGuardReserved,
+            wireGuardMTU: node.wireGuardMTU,
+            wireGuardPersistentKeepalive: node.wireGuardPersistentKeepalive,
+            wireGuardDNS: node.wireGuardDNS,
+            rawURI: node.rawURI
+        )
+        guard let repaired = repairedName(for: effectiveNode) else {
+            return sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return "\(repaired.region.flag) \(repaired.title)"
     }
 
     static func title(for node: ProxyNode) -> String {
-        if let repaired = repairedName(for: node) {
+        let sanitized = NodeAdSanitizer.sanitize(node.name)
+        let effectiveNode = ProxyNode(
+            id: node.id,
+            sourceID: node.sourceID,
+            kind: node.kind,
+            name: sanitized,
+            server: node.server,
+            port: node.port,
+            cipher: node.cipher,
+            password: node.password,
+            uuid: node.uuid,
+            plugin: node.plugin,
+            pluginOptions: node.pluginOptions,
+            transport: node.transport,
+            tls: node.tls,
+            sni: node.sni,
+            hostHeader: node.hostHeader,
+            path: node.path,
+            alpn: node.alpn,
+            skipCertificateVerification: node.skipCertificateVerification,
+            realityPublicKey: node.realityPublicKey,
+            realityShortID: node.realityShortID,
+            fingerprint: node.fingerprint,
+            flow: node.flow,
+            protocolName: node.protocolName,
+            protocolParam: node.protocolParam,
+            obfs: node.obfs,
+            obfsParam: node.obfsParam,
+            congestionControl: node.congestionControl,
+            udpRelayMode: node.udpRelayMode,
+            zeroRTT: node.zeroRTT,
+            version: node.version,
+            upMbps: node.upMbps,
+            downMbps: node.downMbps,
+            wireGuardPrivateKey: node.wireGuardPrivateKey,
+            wireGuardPublicKey: node.wireGuardPublicKey,
+            wireGuardPreSharedKey: node.wireGuardPreSharedKey,
+            wireGuardIPv4: node.wireGuardIPv4,
+            wireGuardIPv6: node.wireGuardIPv6,
+            wireGuardAllowedIPs: node.wireGuardAllowedIPs,
+            wireGuardReserved: node.wireGuardReserved,
+            wireGuardMTU: node.wireGuardMTU,
+            wireGuardPersistentKeepalive: node.wireGuardPersistentKeepalive,
+            wireGuardDNS: node.wireGuardDNS,
+            rawURI: node.rawURI
+        )
+        if let repaired = repairedName(for: effectiveNode) {
             return repaired.title
         }
 
-        var title = node.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var title = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         if let first = title.first, isRegionalFlag(first) {
             title.removeFirst()
             title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         title = normalizedWhitespace(title)
-        return title.isEmpty ? (region(for: node)?.name ?? node.endpoint) : title
+        return title.isEmpty ? (region(for: effectiveNode)?.name ?? effectiveNode.endpoint) : title
     }
+
+
 
     static func repairedName(for node: ProxyNode) -> RepairedNodeName? {
         let name = node.name.trimmingCharacters(in: .whitespacesAndNewlines)

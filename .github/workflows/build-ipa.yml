@@ -1,0 +1,74 @@
+name: Build Tower iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Package IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode_16.0.app || true
+          xcodebuild -version
+
+      - name: Build Tower.app (unsigned for sideloading)
+        run: |
+          mkdir -p build/output
+          xcodebuild \
+            -project Tower.xcodeproj \
+            -scheme Tower \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH=$(find build/DerivedData -name "Tower.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Tower.app not found in build output!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          mkdir -p build/ipa/Payload
+          cp -r "$APP_PATH" build/ipa/Payload/
+          cd build/ipa
+          zip -qr Tower.ipa Payload
+          cd ../..
+          ls -lh build/ipa/Tower.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tower-iOS-IPA
+          path: build/ipa/Tower.ipa
+          retention-days: 14
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ipa/Tower.ipa
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

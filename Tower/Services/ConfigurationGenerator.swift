@@ -3343,6 +3343,11 @@ extension ConfigurationGenerator {
 
         var groups: [SingBoxGroup] = [
             .init(
+                tag: "GLOBAL",
+                isAutomatic: false,
+                members: [RulePolicy.select.configurationName, Self.singBoxDirectTag] + nodeTags
+            ),
+            .init(
                 tag: RulePolicy.select.configurationName,
                 isAutomatic: false,
                 members: nestedPrimaryChoices(regionGroupNames: regionGroupNames)
@@ -3472,6 +3477,24 @@ extension ConfigurationGenerator {
             remote["detour"] = remoteDetour
         }
 
+        var dnsRules: [[String: Any]] = [
+            [
+                "outbound": ["any"],
+                "server": "local"
+            ],
+            [
+                "domain_suffix": [".cn", ".163.com", ".qq.com", ".baidu.com", ".taobao.com", ".aliyun.com"],
+                "server": "local"
+            ]
+        ]
+        if let remoteDetour, !remoteDetour.isEmpty {
+            dnsRules.append([
+                "query_type": ["A", "AAAA"],
+                "server": "remote",
+                "client_subnet": "1.0.0.1"
+            ])
+        }
+
         return [
             "servers": [
                 remote,
@@ -3484,6 +3507,7 @@ extension ConfigurationGenerator {
                     "tls": ["enabled": true, "server_name": "dns.alidns.com"]
                 ]
             ],
+            "rules": dnsRules,
             // A direct-only document has no proxy path for remote DoH. Keep
             // that edge case usable instead of creating a dangling detour.
             "final": remoteDetour == nil ? "local" : "remote",

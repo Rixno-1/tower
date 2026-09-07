@@ -723,6 +723,25 @@ struct ProxyNode: Identifiable, Codable, Hashable {
         return fields.joined(separator: "\u{1F}")
     }
 
+    /// 节点的底层网络连接唯一指纹（用于多订阅源合并时跨订阅去重）
+    /// 忽略展示名称差异，仅比对协议、服务器地址、端口与认证凭据等关键连接参数
+    var connectionFingerprint: String {
+        var fields = [kind.rawValue, server.lowercased(), String(port)]
+        fields.append(contentsOf: [cipher ?? "", password ?? "", uuid ?? "", username ?? ""])
+        fields.append(contentsOf: [
+            transport ?? "", transportMode ?? "", plugin ?? "", tls ? "1" : "0",
+            sni?.lowercased() ?? "", hostHeader?.lowercased() ?? "", path ?? ""
+        ])
+        fields.append(contentsOf: [
+            realityPublicKey ?? "", realityShortID ?? "", flow ?? ""
+        ])
+        fields.append(contentsOf: [
+            wireGuardPrivateKey ?? "", wireGuardPublicKey ?? "", wireGuardIPv4 ?? "", wireGuardIPv6 ?? ""
+        ])
+        return fields.joined(separator: "\u{1F}")
+    }
+
+
     /// Whether this node negotiates REALITY rather than ordinary TLS.
     var usesReality: Bool {
         !(realityPublicKey ?? "").isEmpty
@@ -1877,5 +1896,21 @@ struct GeneratedConfiguration {
             diagnostics: diagnostics,
             hasInvalidPolicyReferences: hasInvalidPolicyReferences
         )
+    }
+}
+
+extension Array where Element == ProxyNode {
+    /// 多订阅源合并：按底层连接指纹去重，保留最新或信息更完整的节点
+    public func deduplicatedByConnection() -> [ProxyNode] {
+        var seen = Set<String>()
+        var result: [ProxyNode] = []
+        for node in self {
+            let fp = node.connectionFingerprint
+            if !seen.contains(fp) {
+                seen.insert(fp)
+                result.append(node)
+            }
+        }
+        return result
     }
 }
