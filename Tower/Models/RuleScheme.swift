@@ -57,7 +57,7 @@ struct RuleScheme: Identifiable, Codable, Hashable {
     var remoteRulesetURLs: [URL] {
         var seen = Set<String>()
         return rulesets.compactMap { ruleset in
-            guard case .remote(let url) = ruleset.resource,
+            guard let url = ruleset.resource.downloadURL,
                   seen.insert(url.absoluteString).inserted else { return nil }
             return url
         }
@@ -127,6 +127,7 @@ struct RuleScheme: Identifiable, Codable, Hashable {
     /// which node names they contain. Mixing the two makes service rules appear
     /// as candidates for one another and can create cyclic configurations.
     func groupEditorMode(for group: RuleSchemeGroup) -> RuleSchemeGroupEditorMode {
+        if group.kind == .smart { return .nodePatternsOnly }
         if isPrimaryNodeSelector(group.name) {
             return .routingTargets
         }
@@ -368,11 +369,11 @@ struct RuleScheme: Identifiable, Codable, Hashable {
 
         let candidates = groups.map { ($0.name, Self.removingLeadingEmoji(from: $0.name)) }
         let counts = Dictionary(grouping: candidates, by: \.1).mapValues(\.count)
-        let names = Dictionary(uniqueKeysWithValues: candidates.map { original, candidate in
+        let names = Dictionary(candidates.map { original, candidate in
             // Keep the source names when removing decoration would create an
             // ambiguous group reference.
             (original, counts[candidate] == 1 ? candidate : original)
-        })
+        }, uniquingKeysWith: { first, _ in first })
 
         func renamed(_ name: String) -> String { names[name] ?? name }
 
@@ -389,7 +390,11 @@ struct RuleScheme: Identifiable, Codable, Hashable {
                 },
                 testURLString: group.testURLString,
                 interval: group.interval,
-                tolerance: group.tolerance
+                tolerance: group.tolerance,
+                algorithm: group.algorithm,
+                sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat,
+                parameters: group.renamedParameters(using: renamed)
             )
         }
         result.rulesets = rulesets.map {
@@ -903,21 +908,22 @@ struct RuleSchemeCustomization: Codable, Hashable {
                 return removedNames.contains(name)
             }
             let kind = override?.kind ?? group.kind
-            if kind == .select, members.isEmpty {
-                members = [.reference("DIRECT")]
-            }
             return RuleSchemeGroup(
                 name: visibleName,
                 kind: kind,
                 members: members,
                 testURLString: group.testURLString,
                 interval: group.interval,
-                tolerance: group.tolerance
+                tolerance: group.tolerance,
+                algorithm: kind == group.kind && override?.resetsSourceOptions != true ? group.algorithm : nil,
+                sourceType: kind == group.kind && override?.resetsSourceOptions != true ? group.sourceType : nil,
+                sourceFormat: kind == group.kind && override?.resetsSourceOptions != true ? group.sourceFormat : nil,
+                parameters: kind == group.kind && override?.resetsSourceOptions != true ? group.renamedParameters(using: renamedGroupName) : nil
             )
         }
 
         guard !groupOrder.isEmpty else { return customizedGroups }
-        let byName = Dictionary(uniqueKeysWithValues: customizedGroups.map { ($0.name, $0) })
+        let byName = Dictionary(customizedGroups.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
         var seen = Set<String>()
         let ordered = groupOrder.compactMap { name -> RuleSchemeGroup? in
             guard seen.insert(name).inserted else { return nil }
@@ -942,13 +948,16 @@ struct RuleSchemeCustomization: Codable, Hashable {
 struct RuleSchemeGroupOverride: Codable, Hashable {
     var kind: RuleSchemeGroup.Kind?
     var members: [RuleSchemeGroupMember]?
+    var resetsSourceOptions: Bool?
 
     init(
         kind: RuleSchemeGroup.Kind? = nil,
-        members: [RuleSchemeGroupMember]? = nil
+        members: [RuleSchemeGroupMember]? = nil,
+        resetsSourceOptions: Bool? = nil
     ) {
         self.kind = kind
         self.members = members
+        self.resetsSourceOptions = resetsSourceOptions
     }
 }
 
@@ -956,6 +965,38 @@ struct RuleSchemeGroup: Codable, Hashable {
     enum Kind: String, Codable {
         case select
         case urlTest
+        case smart
+        case fallback
+        case loadBalance
+        case conditional
+        case relay
+        case unsupported
+
+        var displayTitle: String {
+            switch self {
+            case .select: String(localized: "手动选择")
+            case .urlTest: String(localized: "延迟优选")
+            case .smart: "Smart"
+            case .fallback: String(localized: "故障转移")
+            case .loadBalance: String(localized: "负载均衡")
+            case .conditional: String(localized: "按网络选择")
+            case .relay: String(localized: "链式代理")
+            case .unsupported: String(localized: "未知策略")
+            }
+        }
+
+        var configurationType: String {
+            switch self {
+            case .select: "select"
+            case .urlTest: "url-test"
+            case .smart: "smart"
+            case .fallback: "fallback"
+            case .loadBalance: "load-balance"
+            case .conditional: "conditional"
+            case .relay: "relay"
+            case .unsupported: "unsupported"
+            }
+        }
     }
 
     let name: String
@@ -966,6 +1007,10 @@ struct RuleSchemeGroup: Codable, Hashable {
     let testURLString: String?
     let interval: Int?
     let tolerance: Int?
+    let algorithm: String?
+    let sourceType: String?
+    let sourceFormat: String?
+    let parameters: [String: String]?
 
     init(
         name: String,
@@ -973,7 +1018,11 @@ struct RuleSchemeGroup: Codable, Hashable {
         members: [RuleSchemeGroupMember],
         testURLString: String? = nil,
         interval: Int? = nil,
-        tolerance: Int? = nil
+        tolerance: Int? = nil,
+        algorithm: String? = nil,
+        sourceType: String? = nil,
+        sourceFormat: String? = nil,
+        parameters: [String: String]? = nil
     ) {
         self.name = name
         self.kind = kind
@@ -981,6 +1030,51 @@ struct RuleSchemeGroup: Codable, Hashable {
         self.testURLString = testURLString
         self.interval = interval
         self.tolerance = tolerance
+        self.algorithm = algorithm
+        self.sourceType = sourceType
+        self.sourceFormat = sourceFormat
+        self.parameters = parameters
+    }
+
+    /// Only policy-valued fields are rewritten; SSIDs and regex keys remain literal.
+    func renamedParameters(using rename: (String) -> String) -> [String: String]? {
+        guard var values = parameters else { return nil }
+        func encoded(_ object: Any) -> String? {
+            guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
+                  let text = String(data: data, encoding: .utf8) else { return nil }
+            return text
+        }
+        for key in ["ssid-members", "subnet-fields"] {
+            guard let raw = values[key], let data = raw.data(using: .utf8),
+                  let fields = try? JSONSerialization.jsonObject(with: data) as? [String] else { continue }
+            let renamed = fields.enumerated().map { index, field -> String in
+                if key == "ssid-members", index < 2 { return rename(field) }
+                let separator: Character = key == "ssid-members" ? ":" : "="
+                guard let split = field.firstIndex(of: separator) else { return field }
+                let name = String(field[field.index(after: split)...]).trimmingCharacters(in: .whitespaces)
+                return String(field[...split]) + rename(name)
+            }
+            values[key] = encoded(renamed)
+        }
+        if let name = values["default_policy"] { values["default_policy"] = rename(name) }
+        if let raw = values["rules"], let data = raw.data(using: .utf8),
+           let rules = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            func rewritePolicies(_ value: Any) -> Any {
+                if let dictionary = value as? [String: Any] {
+                    return dictionary.reduce(into: [String: Any]()) { result, pair in
+                        if pair.key == "policy", let name = pair.value as? String {
+                            result[pair.key] = rename(name)
+                        } else {
+                            result[pair.key] = rewritePolicies(pair.value)
+                        }
+                    }
+                }
+                if let array = value as? [Any] { return array.map(rewritePolicies) }
+                return value
+            }
+            values["rules"] = encoded(rewritePolicies(rules))
+        }
+        return values
     }
 }
 
@@ -998,6 +1092,19 @@ struct RuleSchemeRuleset: Codable, Hashable {
         /// A `[]`-prefixed rule written directly in the config, such as
         /// `[]GEOIP,CN` or `[]FINAL`.
         case inline(String)
+
+        /// Recognize the representation persisted by older builds as well.
+        var domainSetURL: URL? {
+            guard case .inline(let line) = self else { return nil }
+            let fields = line.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard fields.count >= 2, fields[0].uppercased() == "DOMAIN-SET" else { return nil }
+            return URL(string: fields[1])
+        }
+
+        var downloadURL: URL? {
+            if case .remote(let url) = self { return url }
+            return domainSetURL
+        }
     }
 
     let groupName: String

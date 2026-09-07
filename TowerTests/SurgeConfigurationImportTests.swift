@@ -18,7 +18,6 @@ final class SurgeConfigurationImportTests: XCTestCase {
     RULE-SET,https://rules.example.com/YouTube.list,YouTube,update-interval=86400
     RULE-SET,https://rules.example.com/Direct.list,DIRECT,update-interval=86400
     IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
-    AND,((PROTOCOL,UDP),(DEST-PORT,443)),REJECT-NO-DROP
     GEOIP,CN,DIRECT
     FINAL,Proxies
 
@@ -121,15 +120,12 @@ final class SurgeConfigurationImportTests: XCTestCase {
         XCTAssertTrue(inline.contains { $0 == ("FINAL", "Proxies") })
     }
 
-    func testLogicalRulesAreSkipped() throws {
-        let scheme = try parse()
-
-        // AND nests comma-separated conditions in parentheses, so splitting on
-        // commas would corrupt it, and no other client understands the form.
-        XCTAssertFalse(scheme.rulesets.contains { ruleset in
-            if case .inline(let rule) = ruleset.resource { return rule.hasPrefix("AND") }
-            return false
-        })
+    func testLogicalRulesAreRejectedInsteadOfSilentlySkipped() {
+        let unsupported = conf.replacingOccurrences(of: "FINAL,Proxies", with:
+            "AND,((PROTOCOL,UDP),(DEST-PORT,443)),REJECT\nFINAL,Proxies")
+        XCTAssertThrowsError(try parser.parse(text: unsupported, id: "logical", name: "Logical", summary: "")) { error in
+            XCTAssertEqual(error as? RuleSchemeParseError, .unsupportedSyntax)
+        }
     }
 
     // MARK: - Round trip

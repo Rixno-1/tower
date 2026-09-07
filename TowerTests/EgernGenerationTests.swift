@@ -13,7 +13,7 @@ final class EgernGenerationTests: XCTestCase {
             kind: kind, name: name, server: "hk.example.com", port: 443,
             cipher: kind == .shadowsocks ? "chacha20-ietf-poly1305" : "auto",
             password: "pw", uuid: "b831381d-6324-4d53-ad4f-8cda48b30811",
-            username: "user", transport: transport, tls: true,
+            username: "user", transport: transport, tls: kind != .shadowsocks,
             sni: "hk.example.com", hostHeader: "hk.example.com",
             path: transport == "ws" ? "/ws" : nil, rawURI: "x://y"
         )

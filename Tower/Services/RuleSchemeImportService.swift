@@ -43,6 +43,13 @@ struct RuleSchemeImportService {
         self.session = session
     }
 
+    static func defaultName(for url: URL) -> String {
+        let fileURL = rawFileURL(for: url)
+        let filename = fileURL.lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !fileURL.hasDirectoryPath, !filename.isEmpty, filename != "/" { return filename }
+        return fileURL.host ?? String(localized: "导入的规则")
+    }
+
     func importScheme(from urlString: String, name: String) async throws -> RuleImportResult {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let entered = URL(string: trimmed), entered.host != nil else {
@@ -64,7 +71,7 @@ struct RuleSchemeImportService {
         let scheme = try parser.parse(
             data: payload,
             id: "imported-\(UUID().uuidString)",
-            name: resolvedName.isEmpty ? (url.host ?? String(localized: "导入的规则")) : resolvedName,
+            name: resolvedName.isEmpty ? Self.defaultName(for: url) : resolvedName,
             summary: String(localized: "从 \(url.host ?? trimmed) 导入"),
             sourceURLString: trimmed,
             isBundled: false

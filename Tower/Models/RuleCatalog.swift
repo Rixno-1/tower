@@ -231,7 +231,11 @@ struct RuleCatalogEntry: Identifiable, Codable, Hashable {
                 members: legacyGroup.members,
                 testURLString: legacyGroup.testURLString,
                 interval: legacyGroup.interval,
-                tolerance: legacyGroup.tolerance
+                tolerance: legacyGroup.tolerance,
+                algorithm: legacyGroup.algorithm,
+                sourceType: legacyGroup.sourceType,
+                sourceFormat: legacyGroup.sourceFormat,
+                parameters: legacyGroup.parameters
             )
         }
         return migrated

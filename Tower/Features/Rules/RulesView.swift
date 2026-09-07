@@ -483,9 +483,7 @@ private struct RuleSchemeCard: View {
     }
 
     private func description(of group: RuleSchemeGroup) -> String {
-        let kind = group.kind == .urlTest
-            ? String(localized: "延迟优选")
-            : String(localized: "手动选择")
+        let kind = group.kind.displayTitle
         let references = group.members.filter {
             if case .reference = $0 { return true }
             return false
@@ -573,7 +571,7 @@ private struct ImportRuleSchemeSheet: View {
                 }
 
                 Section("名称（可选）") {
-                    TextField("留空则使用域名", text: $name)
+                    TextField("留空则使用文件名", text: $name)
                 }
 
                 if let errorMessage {
@@ -1263,10 +1261,7 @@ private struct RuleCustomizationSheet: View {
     }
 
     private func groupModeTitle(_ group: RuleSchemeGroup) -> String {
-        switch group.kind {
-        case .select: return String(localized: "手动选择")
-        case .urlTest: return String(localized: "延迟优选")
-        }
+        group.kind.displayTitle
     }
 
     private func groupSelectionSummary(_ group: RuleSchemeGroup) -> String {
@@ -1920,10 +1915,12 @@ private struct RuleGroupEditor: View {
     let group: RuleSchemeGroup
     @State private var selectedReferences: [String]
     @State private var selectedNodePatterns: Set<String>
+    @State private var selectedKind: RuleSchemeGroup.Kind
 
     init(scheme: RuleScheme, group: RuleSchemeGroup) {
         self.scheme = scheme
         self.group = group
+        _selectedKind = State(initialValue: group.kind)
         var seenReferences = Set<String>()
         let references = group.members.compactMap { member -> String? in
             guard case .reference(let name) = member else { return nil }
@@ -1964,6 +1961,19 @@ private struct RuleGroupEditor: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Picker("策略类型", selection: $selectedKind) {
+                        ForEach([RuleSchemeGroup.Kind.select, .urlTest, .fallback, .loadBalance, .smart, .conditional, .relay, .unsupported], id: \.self) { kind in
+                            if kind == group.kind || [.select, .urlTest, .fallback].contains(kind) {
+                                Text(kind.displayTitle).tag(kind)
+                            }
+                        }
+                    }
+                } footer: {
+                    if selectedKind != group.kind {
+                        Text("更改策略类型会改变选路行为，并清除原类型专用参数。")
+                    }
+                }
                 switch editorMode {
                 case .routingTargets:
                     OrderedPolicyCandidateSections(
@@ -2041,18 +2051,22 @@ private struct RuleGroupEditor: View {
         let members: [RuleSchemeGroupMember]
         switch editorMode {
         case .routingTargets:
-            members = referenceMembers
+            members = referenceMembers + (group.kind == .select ? [] : group.members.filter { if case .nodePattern = $0 { return true }; return false })
         case .nodePatternsOnly:
-            members = patternMembers
+            members = patternMembers + (group.kind == .smart ? [] : group.members.filter { if case .reference = $0 { return true }; return false })
         }
         model.updateRuleGroup(
             RuleSchemeGroup(
                 name: group.name,
-                kind: editorMode == .routingTargets ? .select : group.kind,
+                kind: selectedKind,
                 members: members,
                 testURLString: group.testURLString,
                 interval: group.interval,
-                tolerance: group.tolerance
+                tolerance: group.tolerance,
+                algorithm: group.algorithm,
+                sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat,
+                parameters: group.parameters
             ),
             for: scheme
         )
@@ -2304,7 +2318,11 @@ private struct CatalogRuleRouteEditor: View {
                 members: members,
                 testURLString: group.testURLString,
                 interval: group.interval,
-                tolerance: group.tolerance
+                tolerance: group.tolerance,
+                algorithm: group.algorithm,
+                sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat,
+                parameters: group.parameters
             )
             updated.policyName = group.name
             if flow.generatedPolicyGroup != nil {

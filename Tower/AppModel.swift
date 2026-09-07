@@ -376,9 +376,13 @@ final class AppModel {
         if customization.groupOrder.isEmpty {
             customization.groupOrder = customizableRuleGroups(for: scheme).map(\.name)
         }
+        let previous = customizableRuleGroups(for: scheme).first { $0.name == group.name }
+        let resetsOptions = customization.groupOverrides[group.name]?.resetsSourceOptions == true
+            || previous?.kind != group.kind
         customization.groupOverrides[group.name] = RuleSchemeGroupOverride(
             kind: group.kind,
-            members: group.members
+            members: group.members,
+            resetsSourceOptions: resetsOptions ? true : nil
         )
         ruleSchemeCustomizations[scheme.id] = customization
         persist()
@@ -728,7 +732,11 @@ final class AppModel {
                     members: group.members,
                     testURLString: group.testURLString,
                     interval: group.interval,
-                    tolerance: group.tolerance
+                    tolerance: group.tolerance,
+                algorithm: group.algorithm,
+                sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat,
+                parameters: group.parameters
                 )
                 if customRuleFlows[index].policyName == oldGroupName {
                     customRuleFlows[index].policyName = ruleSet.name
@@ -763,7 +771,11 @@ final class AppModel {
                 },
                 testURLString: group.testURLString,
                 interval: group.interval,
-                tolerance: group.tolerance
+                tolerance: group.tolerance,
+                algorithm: group.algorithm,
+                sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat,
+                parameters: group.renamedParameters { $0 == oldName ? newName : $0 }
             )
         }
 
@@ -847,8 +859,8 @@ final class AppModel {
     }
 
     /// Deletes the visible policy group and repairs the graph in one persisted
-    /// transaction. Any select group left without a candidate safely falls
-    /// back to DIRECT when the customization is applied.
+    /// transaction. Empty groups remain empty so export can preserve their names
+    /// with a visible, fail-closed policy instead of silently routing directly.
     func deleteRuleGroup(named groupName: String, for scheme: RuleScheme) {
         var customization = ruleSchemeCustomizations[scheme.id]
             ?? RuleSchemeCustomization(schemeID: scheme.id)
@@ -2335,7 +2347,13 @@ final class AppModel {
             .hashValue
         let scheme = selectedScheme.map(effectiveScheme)
         let remoteSubscriptions = embeddedRemoteSubscriptions(for: resolvedTarget, contentMode: resolvedMode)
-        let remoteSubscriptionsHash = remoteSubscriptions.hashValue
+        let sourceURLHashes = Dictionary(subscriptions.filter(\.isEnabled).map {
+            ($0.id, RuleSchemeParser.sourceURLHash($0.urlString))
+        }, uniquingKeysWith: { first, _ in first })
+        var sourceHasher = Hasher()
+        sourceHasher.combine(remoteSubscriptions)
+        sourceHasher.combine(sourceURLHashes)
+        let remoteSubscriptionsHash = sourceHasher.finalize()
         let key = GenerationCacheKey(
             target: resolvedTarget,
             presetID: scheme?.id ?? selectedPreset.id,
@@ -2363,6 +2381,7 @@ final class AppModel {
                 excludedKinds: excluded,
                 preferRuleSets: preferRuleSets,
                 remoteSubscriptions: remoteSubscriptions,
+                sourceURLHashes: sourceURLHashes,
                 supportedKindsOverride: supportedKindsOverride
             )
         } else {
@@ -2793,7 +2812,9 @@ final class AppModel {
             return source
         }
         nodes = snapshot.nodes
-        importedSchemes = snapshot.importedSchemes ?? []
+        importedSchemes = (snapshot.importedSchemes ?? []).map {
+            RuleSchemeParser().restoringLegacySmartGroups(in: $0)
+        }
         selectedRuleGroups = snapshot.selectedRuleGroups?.mapValues(Set.init) ?? [:]
         ruleSchemeCustomizations = snapshot.ruleSchemeCustomizations ?? [:]
         ruleGroupEmojisEnabled = snapshot.ruleGroupEmojisEnabled ?? [:]

@@ -29,11 +29,11 @@ final class TransportGenerationTests: XCTestCase {
         XCTAssertTrue(h2.content.contains("h2-opts:"), h2.content)
         XCTAssertTrue(h2.content.contains("host: [\"edge.example.com\"]"), h2.content)
 
-        let upgrade = generate(.clash, transport: "httpupgrade", path: "/up", host: "edge.example.com")
+        let upgrade = generate(.clashApple, transport: "httpupgrade", path: "/up", host: "edge.example.com")
         XCTAssertTrue(upgrade.content.contains("network: \"ws\""), upgrade.content)
         XCTAssertTrue(upgrade.content.contains("v2ray-http-upgrade: true"), upgrade.content)
 
-        let xhttp = generate(.clash, transport: "xhttp", path: "/split", host: "edge.example.com")
+        let xhttp = generate(.clashApple, transport: "xhttp", path: "/split", host: "edge.example.com")
         XCTAssertTrue(xhttp.content.contains("xhttp-opts:"), xhttp.content)
     }
 
@@ -51,10 +51,10 @@ final class TransportGenerationTests: XCTestCase {
     }
 
     func testXHTTPIsOnlyWrittenWhereTheClientCanExpressIt() {
-        for target in [ClientTarget.clash, .clashMi, .karing, .shadowrocket] {
+        for target in [ClientTarget.clashApple, .clashMi, .karing, .shadowrocket] {
             XCTAssertEqual(generate(target, transport: "xhttp", path: "/split").supportedNodeCount, 1)
         }
-        for target in [ClientTarget.surge, .loon, .quanx, .hiddify, .egern, .singBox] {
+        for target in [ClientTarget.clash, .surge, .loon, .quanx, .hiddify, .egern, .singBox] {
             let result = generate(target, transport: "xhttp", path: "/split")
             XCTAssertEqual(result.supportedNodeCount, 0, "\(target.name) 不应吞掉 XHTTP 参数")
             XCTAssertEqual(result.skippedNodeCount, 1)

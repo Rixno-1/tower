@@ -67,6 +67,12 @@ struct RuleSetEmissionPlanner {
         var remoteIndex = 0
 
         for ruleset in scheme.rulesets {
+            if ruleset.resource.domainSetURL != nil, !(target == .surge && preferRuleSets) {
+                entries.append(contentsOf: repository.lines(for: ruleset.resource).map {
+                    .inline(InlineRule(policyName: ruleset.groupName, line: $0))
+                })
+                continue
+            }
             switch ruleset.resource {
             case .inline(let line):
                 if line.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "FINAL" {

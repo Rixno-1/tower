@@ -101,6 +101,7 @@ struct ProxyNodeShareLinkGenerator {
         // connect, which is exactly what the importer refuses to accept.
         if node.plugin == "v2ray-plugin" {
             var plugin = "v2ray-plugin;mode=websocket"
+            if let mux = node.pluginMux { plugin += ";mux=\(mux ? "1" : "0")" }
             if node.tls { plugin += ";tls" }
             if let host = node.hostHeader, !host.isEmpty { plugin += ";host=\(host)" }
             if let path = node.exportablePath { plugin += ";path=\(path)" }

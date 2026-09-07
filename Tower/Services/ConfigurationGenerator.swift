@@ -151,8 +151,41 @@ struct ConfigurationGenerator {
         excludedKinds: Set<ProxyKind> = [],
         preferRuleSets: Bool = true,
         remoteSubscriptions: [RemoteSubscriptionLink] = [],
+        sourceURLHashes: [UUID: String] = [:],
         supportedKindsOverride: Set<ProxyKind>? = nil
     ) -> GeneratedConfiguration {
+        // Adapt a copy for this export; the saved source remains Smart so switching
+        // back to a native client restores its original algorithm and options.
+        var scheme = scheme
+        var downgradedSmart = false
+        var ignoredNotifications = false
+        scheme.groups = scheme.groups.map { group in
+            let downgrade = group.kind == .smart && ![ClientTarget.surge, .egern].contains(target)
+            var parameters = group.parameters
+            if downgrade {
+                downgradedSmart = true
+                parameters?["priorities"] = nil
+                parameters?["tower-priority-order"] = nil
+            }
+            if parameters?["no-alert"] != nil,
+               !nativeOptionKeys(sourceFormat: group.sourceFormat, target: target).contains("no-alert") {
+                parameters?["no-alert"] = nil
+                ignoredNotifications = true
+            }
+            return RuleSchemeGroup(name: group.name, kind: downgrade ? .urlTest : group.kind,
+                                   members: group.members, testURLString: group.testURLString,
+                                   interval: group.interval, tolerance: group.tolerance,
+                                   algorithm: group.algorithm, sourceType: group.sourceType,
+                                   sourceFormat: group.sourceFormat, parameters: parameters)
+        }
+        var adaptationDiagnostics: [String] = []
+        scheme.groups = scheme.groups.map { group in
+            let adapted = compatiblePolicy(group, target: target)
+            if adapted.kind != group.kind || adapted.members != group.members || (adapted.parameters ?? [:]) != (group.parameters ?? [:]) {
+                adaptationDiagnostics.append(String(localized: "策略组“\(group.name)”已兼容转换为\(adapted.kind.displayTitle)，不支持的参数已忽略。"))
+            }
+            return adapted
+        }
         let supported = uniquedNames(
             nodes.filter {
                 writes(
@@ -168,15 +201,70 @@ struct ConfigurationGenerator {
             target.supportsEmbeddedRemoteSubscriptions ? remoteSubscriptions : []
         )
         let remoteSourceIDs = Set(remoteEntries.map(\.sourceID))
-        let inlineNodes = supported.filter { node in
-            node.sourceID.map(remoteSourceIDs.contains) != true
-        }
+        let graphIssues = RuleSchemePolicyValidator.validate(
+            groups: scheme.groups,
+            ruleTargets: scheme.rulesets.map(\.groupName),
+            nodeNames: Set(supported.flatMap { [$0.name, NodeRegionResolver.displayName(for: $0)] }),
+            allowUnresolvedPatterns: !remoteEntries.isEmpty
+        )
         let resolved = resolveGroups(
             scheme: scheme,
             nodes: supported,
             target: target,
-            preserveUnresolvedPatterns: !remoteEntries.isEmpty
+            preserveUnresolvedPatterns: !remoteEntries.isEmpty,
+            sourceURLHashes: sourceURLHashes,
+            remoteSourceIDs: remoteSourceIDs
         )
+        let explicitlyInlineNames = Set(resolved.flatMap(\.inlineNodeNames))
+        let inlineNodes = supported.filter { node in
+            node.sourceID.map(remoteSourceIDs.contains) != true
+                || explicitlyInlineNames.contains(NodeRegionResolver.displayName(for: node))
+        }
+        var diagnostics: [String] = []
+        diagnostics += policyCapabilityIssues(scheme.groups, target: target)
+        diagnostics += graphIssues.filter { $0.code != .emptyGroup }.map { issue in
+            let detail = issue.names.joined(separator: ", ")
+            return String(localized: "策略组校验失败（\(issue.code.displayTitle)）：\(detail)。请修正后导出。")
+        }
+        let normalizedNames = scheme.groups.map { group in
+            [.surge, .loon, .quanx].contains(target) ? confName(group.name) : collapsingLineBreaks(group.name)
+        }
+        let collidedNames = Dictionary(grouping: normalizedNames, by: { $0 }).filter { $0.value.count > 1 }.keys.sorted()
+        if !collidedNames.isEmpty {
+            let detail = collidedNames.joined(separator: ", ")
+            let label = RuleSchemePolicyValidator.Code.duplicateGroupName.displayTitle
+            diagnostics.append(String(localized: "策略组校验失败（\(label)）：\(detail)。请修正后导出。"))
+        }
+        let missingDomainSets = !(target == .surge && preferRuleSets)
+            && scheme.rulesets.contains { !schemes.hasDomainSetContent($0.resource) }
+        if missingDomainSets {
+            diagnostics.append(String(localized: "部分规则还没下载完成") + " · " + String(localized: "刷新规则"))
+        }
+        let capabilityBlocked = !diagnostics.isEmpty
+        diagnostics += adaptationDiagnostics
+        if downgradedSmart {
+            diagnostics.append(String(localized: "当前客户端不支持 Smart，已转换为延迟优选。"))
+        }
+        if ignoredNotifications {
+            diagnostics.append(String(localized: "已忽略当前客户端不支持的通知设置。"))
+        }
+        for (source, group) in zip(scheme.groups, resolved) where group.kind == .select
+            && group.members == [builtinPolicyName("REJECT", target: target)]
+            && !(source.kind == .select && source.members == [.reference("REJECT")]) {
+            diagnostics.append(String(localized: "策略组“\(group.name)”没有匹配节点，已设为拒绝连接。"))
+        }
+        let knownPolicies = Set(scheme.groups.map(\.name)
+            + supported.map { NodeRegionResolver.displayName(for: $0) }
+            + ["DIRECT", "REJECT", "REJECT-DROP", "direct", "reject", "reject-drop"])
+        let references = scheme.groups.flatMap(\.members).compactMap { member -> String? in
+            guard case .reference(let name) = member else { return nil }
+            return name
+        }
+        let unknownPolicies = Set(scheme.rulesets.map(\.groupName) + references).subtracting(knownPolicies)
+        if !unknownPolicies.isEmpty {
+            let names = unknownPolicies.sorted().joined(separator: ", ")
+            diagnostics.append(String(localized: "规则引用了不存在的策略组：\(names)。请修正规则后导出。"))
+        }
         let rulePlan = RuleSetEmissionPlanner(repository: schemes).plan(
             for: scheme,
             target: target,
@@ -255,13 +343,248 @@ struct ConfigurationGenerator {
 
         return GeneratedConfiguration(
             target: target,
-            content: content,
+            content: unknownPolicies.isEmpty && !capabilityBlocked ? content : "",
             supportedNodeCount: inlineNodes.count,
             skippedNodeCount: nodes.filter { $0.sourceID.map(remoteSourceIDs.contains) != true }.count - inlineNodes.count,
             ruleCount: ruleCount(for: scheme, schemes: schemes),
             fileExtensionOverride: target == .shadowrocket ? "yaml" : nil,
-            remoteSourceCount: remoteEntries.count
+            remoteSourceCount: remoteEntries.count,
+            diagnostics: diagnostics,
+            hasInvalidPolicyReferences: !unknownPolicies.isEmpty || capabilityBlocked
         )
+    }
+
+    /// Return nil when an algorithm has no faithful native representation.
+    private func loadBalanceAlgorithm(_ value: String?, target: ClientTarget) -> String? {
+        let raw = (value ?? "destination-hash").lowercased().replacingOccurrences(of: "_", with: "-")
+        let kind: String
+        switch raw {
+        case "round-robin", "roundrobin": kind = "round-robin"
+        case "hash", "dest-hash", "destination-hash", "consistent-hashing", "pcc", "persistent": kind = "hash"
+        case "random": kind = "random"
+        case "sticky-sessions": kind = "sticky-sessions"
+        default: return nil
+        }
+        switch target {
+        case .surge: return kind == "random" ? "random" : kind == "hash" ? "persistent" : nil
+        case .quanx: return kind == "round-robin" ? "round-robin" : kind == "hash" ? "dest-hash" : nil
+        case .loon: return kind == "random" ? "Random" : kind == "hash" ? "PCC" : kind == "round-robin" ? "Round-Robin" : nil
+        case .egern: return kind == "hash" ? "hash" : kind == "round-robin" ? "round_robin" : nil
+        case .clash, .clashMi:
+            return kind == "hash" ? "consistent-hashing" : ["round-robin", "sticky-sessions"].contains(kind) ? kind : nil
+        case .clashApple: return kind == "hash" ? "consistent-hashing" : kind == "round-robin" ? kind : nil
+        default: return nil
+        }
+    }
+
+    private func stringArray(_ text: String?) -> [String]? {
+        guard let text, let data = text.data(using: .utf8) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String]
+    }
+
+    private func safeConditionalRules(_ text: String?) -> String? {
+        guard let text, let data = text.data(using: .utf8),
+              let rules = (try? JSONSerialization.jsonObject(with: data)) as? [[String: [String: String]]],
+              rules.allSatisfy({ rule in
+                  rule.count == 1 && rule.allSatisfy { key, value in
+                      ["ssid", "bssid", "cellular"].contains(key)
+                        && Set(value.keys) == Set(["match", "policy"])
+                  }
+              }),
+              let encoded = try? JSONSerialization.data(withJSONObject: rules, options: [.sortedKeys]) else { return nil }
+        return String(data: encoded, encoding: .utf8)
+    }
+
+    private func validConditional(_ group: RuleSchemeGroup, target: ClientTarget) -> Bool {
+        let parameters = group.parameters ?? [:]
+        switch target {
+        case .surge:
+            guard group.sourceFormat == "surge", let fields = stringArray(parameters["subnet-fields"]),
+                  fields.contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("default=") || $0.hasPrefix("default =") }) else { return false }
+            return fields.allSatisfy { $0.contains("=") && !$0.contains("\n") && !$0.contains("\r") }
+        case .quanx:
+            guard group.sourceFormat == "quanx", let fields = stringArray(parameters["ssid-members"]), fields.count >= 2 else { return false }
+            return fields.enumerated().allSatisfy { offset, field in
+                guard !field.contains("\n"), !field.contains("\r") else { return false }
+                if offset < 2 { return true }
+                guard let colon = field.firstIndex(of: ":") else { return false }
+                // A literal comma in the SSID has no documented escape in QX;
+                // reject instead of percent-encoding it into a different network.
+                return !field[..<colon].contains(",")
+            }
+        case .egern:
+            return group.sourceFormat == "egern" && parameters["default_policy"] != nil
+                && safeConditionalRules(parameters["rules"]) != nil
+                && Set(parameters.keys).isSubset(of: ["name", "rules", "default_policy", "type", "tower-source-bindings", "tower-source-tags", "tower-source-patterns"])
+        default: return false
+        }
+    }
+
+    /// Only pass through documented scalar options in the same dialect. Units
+    /// and meanings are deliberately not guessed across clients.
+    private func nativeOptionKeys(sourceFormat: String?, target: ClientTarget) -> Set<String> {
+        switch (sourceFormat, target) {
+        case ("surge", .surge): return ["timeout", "evaluate-before-use", "no-alert"]
+        case ("surge", .loon): return ["max-timeout"]
+        case ("quanx", .quanx): return ["alive-checking"]
+        case ("clash", .clash), ("clash", .clashMi):
+            return ["lazy", "timeout", "max-failed-times", "exclude-filter", "exclude-type", "disable-udp"]
+        case ("clash", .clashApple): return ["lazy", "timeout"]
+        case ("egern", .egern): return ["timeout", "flatten", "block_quic"]
+        case ("sing-box", .singBox), ("sing-box", .hiddify):
+            return ["idle_timeout", "interrupt_exist_connections"]
+        default: return []
+        }
+    }
+
+    private func isSafeNativeOption(_ key: String, value: String) -> Bool {
+        if ["no-alert", "evaluate-before-use"].contains(key) {
+            return ["true", "false", "0", "1"].contains(value)
+        }
+        if ["evaluate-before-use", "no-alert", "alive-checking", "lazy", "disable-udp", "flatten", "block_quic", "interrupt_exist_connections"].contains(key) {
+            return ["true", "false"].contains(value)
+        }
+        if ["timeout", "max-timeout", "max-failed-times"].contains(key) {
+            return Int(value).map { $0 >= 0 } ?? false
+        }
+        if key == "idle_timeout" { return value.range(of: "^[0-9]+(ms|s|m|h)$", options: .regularExpression) != nil }
+        if key == "exclude-filter" { return (try? NSRegularExpression(pattern: value)) != nil }
+        if key == "exclude-type" { return value.range(of: "^[a-zA-Z0-9|_-]+$", options: .regularExpression) != nil }
+        return false
+    }
+
+    private func nativeOptions(_ group: ResolvedSchemeGroup, target: ClientTarget) -> [(String, String)] {
+        let allowed = nativeOptionKeys(sourceFormat: group.sourceFormat, target: target)
+        return (group.parameters ?? [:]).filter { allowed.contains($0.key) && isSafeNativeOption($0.key, value: $0.value) }.sorted { $0.key < $1.key }
+    }
+
+    private func appendNativeOptions(_ group: ResolvedSchemeGroup, target: ClientTarget, to output: inout String) {
+        let options = nativeOptions(group, target: target)
+        if target == .egern, group.parameters?["flatten"] == "true", let filter = group.parameters?["filter"] {
+            output += "      filter: \(yaml(filter))\n"
+        }
+        guard !options.isEmpty else { return }
+        if [.surge, .loon, .quanx].contains(target) {
+            if output.hasSuffix("\n") { output.removeLast() }
+            output += options.map { ", \($0.0)=\(confValue($0.1))" }.joined() + "\n"
+        } else {
+            let indent = target == .egern ? "      " : "    "
+            for (key, value) in options {
+                let scalar = ["exclude-filter", "exclude-type"].contains(key) ? yaml(value) : value
+                output += "\(indent)\(key): \(scalar)\n"
+            }
+        }
+    }
+
+    private func orderedEgernPriorities(_ parameters: [String: String]?) -> [(String, String)]? {
+        guard let raw = parameters?["priorities"], let data = raw.data(using: .utf8),
+              let values = (try? JSONSerialization.jsonObject(with: data)) as? [String: NSNumber],
+              !values.isEmpty,
+              values.allSatisfy({ (try? NSRegularExpression(pattern: $0.key)) != nil && $0.value.doubleValue.isFinite && $0.value.doubleValue >= 0 }) else { return nil }
+        let order: [String]
+        if let declared = stringArray(parameters?["tower-priority-order"]) {
+            guard declared.count == values.count, Set(declared) == Set(values.keys) else { return nil }
+            order = declared
+        } else {
+            // With no source-order metadata, reordering is safe only when every coefficient is equal.
+            guard Set(values.values.map(\.doubleValue)).count <= 1 else { return nil }
+            order = values.keys.sorted()
+        }
+        return order.compactMap { key in values[key].map { (key, $0.stringValue) } }
+    }
+
+    private func supportsPolicyKind(_ group: RuleSchemeGroup, target: ClientTarget) -> Bool {
+            switch group.kind {
+            case .select, .urlTest: return true
+            case .smart: return [.surge, .egern].contains(target)
+            case .fallback: return [.surge, .quanx, .clash, .clashMi, .clashApple, .loon, .egern, .shadowrocket].contains(target)
+            case .loadBalance: return loadBalanceAlgorithm(group.algorithm, target: target) != nil
+            case .relay: return target == .clashApple || (target == .loon && group.sourceType == "chain")
+            case .conditional: return validConditional(group, target: target)
+            case .unsupported: return false
+            }
+    }
+
+    /// Export-only adaptation; never overwrite the user's original policy model.
+    private func compatiblePolicy(_ group: RuleSchemeGroup, target: ClientTarget) -> RuleSchemeGroup {
+        var kind = group.kind
+        var members = group.members
+        var parameters = group.parameters ?? [:]
+        if !supportsPolicyKind(group, target: target) {
+            switch kind {
+            case .smart, .fallback, .loadBalance: kind = .urlTest
+            case .conditional:
+                kind = .select
+                var defaultPolicy = parameters["default_policy"]
+                if group.sourceFormat == "surge", let fields = stringArray(parameters["subnet-fields"]) {
+                    defaultPolicy = fields.compactMap { field -> String? in
+                        let pair = field.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+                        return pair.count == 2 && pair[0] == "default" ? pair[1] : nil
+                    }.first
+                } else if group.sourceFormat == "quanx" {
+                    defaultPolicy = stringArray(parameters["ssid-members"])?.first
+                }
+                if let defaultPolicy, !defaultPolicy.isEmpty { members = [.reference(defaultPolicy)] }
+            case .relay, .unsupported: kind = .select
+            case .select, .urlTest: break
+            }
+            for key in ["subnet-fields", "ssid-members", "default_policy", "rules", "priorities", "tower-priority-order"] {
+                parameters[key] = nil
+            }
+        }
+        func copy(_ options: [String: String]) -> RuleSchemeGroup {
+            RuleSchemeGroup(name: group.name, kind: kind, members: members,
+                testURLString: group.testURLString, interval: group.interval, tolerance: group.tolerance,
+                algorithm: group.algorithm, sourceType: group.sourceType,
+                sourceFormat: group.sourceFormat, parameters: options.isEmpty ? nil : options)
+        }
+        // Conditional data and priority maps must be validated together, not one key at a time.
+        let compoundKeys: Set<String> = kind == .conditional
+            ? ["subnet-fields", "ssid-members", "default_policy", "rules"]
+            : kind == .smart ? ["priorities", "tower-priority-order"] : []
+        let compound = parameters.filter { compoundKeys.contains($0.key) }
+        if !compound.isEmpty && !policyCapabilityIssues([copy(compound)], target: target).isEmpty {
+            for key in compoundKeys { parameters[key] = nil }
+        }
+        for (key, value) in parameters where !compoundKeys.contains(key) {
+            var probe = compound
+            probe[key] = value
+            if !policyCapabilityIssues([copy(probe)], target: target).isEmpty {
+                parameters[key] = nil
+            }
+        }
+        return copy(parameters)
+    }
+
+    private func policyCapabilityIssues(_ groups: [RuleSchemeGroup], target: ClientTarget) -> [String] {
+        groups.compactMap { group in
+            let supported = supportsPolicyKind(group, target: target)
+            // Source structure and fields already represented by the model are
+            // not raw output. Never copy arbitrary source options into another dialect.
+            let represented: Set<String> = ["name", "tag", "type", "proxies", "policies", "outbounds", "url", "latency_test_url", "interval", "check-interval", "tolerance", "algorithm", "strategy", "persistent", "raw-fields", "include-other-group", "include-all-proxies", "include-all", "policy-path", "policy-regex-filter", "server-tag-regex", "filter", "use", "urls", "update-interval", "update_interval", "icon", "hidden", "resource-tag-regex", "tower-source-bindings", "tower-source-tags", "tower-source-patterns"]
+            let unhandled = (group.parameters ?? [:]).filter { key, value in
+                if ["resource-tag-regex", "server-tag-regex", "filter", "policy-regex-filter"].contains(key) { return (try? NSRegularExpression(pattern: value)) == nil }
+                if key == "tower-source-bindings" {
+                    guard let data = value.data(using: .utf8),
+                          (try? JSONSerialization.jsonObject(with: data)) is [String: String] else { return true }
+                    return false
+                }
+                if ["tower-source-patterns", "tower-source-tags"].contains(key) { return stringArray(value) == nil }
+                if represented.contains(key) { return false }
+                if nativeOptionKeys(sourceFormat: group.sourceFormat, target: target).contains(key),
+                   isSafeNativeOption(key, value: value) { return false }
+                if group.kind == .conditional, validConditional(group, target: target) { return false }
+                if key == "alive-checking", value == "false" { return false }
+                if key == "tower-priority-order", target == .egern, group.kind == .smart { return stringArray(value) == nil }
+                if key == "priorities", target == .egern, group.kind == .smart {
+                    return orderedEgernPriorities(group.parameters) == nil
+                }
+                return true
+            }.keys.sorted()
+            guard !supported || !unhandled.isEmpty else { return nil }
+            let type = ([group.sourceType ?? group.kind.rawValue] + unhandled).joined(separator: ", ")
+            return String(localized: "策略组“\(group.name)”的类型或参数（\(type)）无法在 \(target.rawValue) 中保持原意，请先修改策略组。")
+        }
     }
 
     /// Generates the remote node resource expected by clients that can add a
@@ -369,18 +692,42 @@ struct ConfigurationGenerator {
         // would get plain TLS aimed at a borrowed SNI — the exact "looks right,
         // never connects" outcome, so those nodes are skipped and counted.
         if node.usesReality, !target.expressesReality { return false }
-        // Clash and Stash implement Snell only up to version 3, so a v4+ node
-        // is skipped there rather than written as a proxy they would reject.
-        if node.kind == .snell, [.clash, .clashApple, .clashMi].contains(target), (node.version ?? 4) >= 4 { return false }
+        // Stash's compatibility baseline supports Reality only on VLESS TCP.
+        // Do not emit ordinary TLS when the source requires Reality.
+        if target == .clash, node.usesReality,
+           node.kind != .vless || !["", "tcp"].contains(node.transport?.lowercased() ?? "tcp") { return false }
+        // Hako's verified outbound implementations do not consume Reality for
+        // these kinds or native SS TLS. Preserve the source and report skips.
+        if target == .clashApple {
+            if node.usesReality, [.anytls, .socks5, .http].contains(node.kind) { return false }
+            if node.kind == .shadowsocks, node.tls,
+               (node.plugin ?? "").isEmpty, simpleObfsMode(node) == nil { return false }
+        }
+        // Native SS-over-TLS is distinct from Stash's supported SS plugins.
+        if target == .clash, node.kind == .shadowsocks, node.tls,
+           (node.plugin ?? "").isEmpty, simpleObfsMode(node) == nil { return false }
+        // Stash before iOS 3.6 rejects Snell v4/v5 at configuration load time.
+        // Until a client-version preference exists, use the compatible v1-v3
+        // baseline. Never rewrite the version: it must match the server.
+        // Omitted YAML version defaults to v1 in Stash.
+        if node.kind == .snell, target == .clash, !(1...3).contains(node.version ?? 1) { return false }
+        // Mihomo has its own version support, independent of Stash.
+        if node.kind == .snell, [.clashApple, .clashMi].contains(target), !(1...5).contains(node.version ?? 4) { return false }
+        // Egern has no native ordinary SS-over-TLS transport. Never strip it.
+        if target == .egern, node.kind == .shadowsocks, node.tls { return false }
         // sing-box 1.14 represents non-QUIC Snell v5 with version 4.
         // Other versions require capabilities Tower does not model yet.
         if node.kind == .snell, target == .singBox {
             guard [4, 5].contains(node.version ?? 4) else { return false }
             if let obfs = node.obfs, !obfs.isEmpty, !["none", "http"].contains(obfs.lowercased()) { return false }
         }
+        // Official Shadowsocks has no native TLS field. Its SIP003 plugins
+        // carry their own TLS; never silently export native SS TLS as plain SS.
+        if [.singBox, .hiddify].contains(target), node.kind == .shadowsocks,
+           node.tls, (node.plugin ?? "").isEmpty, simpleObfsMode(node) == nil { return false }
         // The official SOCKS outbound cannot express TLS. Dropping TLS would
         // change the protocol; exclude the node and keep it in skipped counts.
-        if target == .singBox, node.kind == .socks5, node.tls { return false }
+        if [.singBox, .hiddify].contains(target), node.kind == .socks5, node.tls || node.usesReality { return false }
         // Surge and Shadowrocket carry Hysteria 2's obfuscator in the key name
         // — `salamander-password` and a bare `obfsParam` — so neither has any
         // way to say "some other obfuscator". (Surge also documents its own
@@ -391,6 +738,8 @@ struct ConfigurationGenerator {
         if node.kind == .hysteria2, [.surge, .shadowrocket].contains(target),
            let obfs = hysteria2Obfs(node), obfs.type.lowercased() != "salamander" { return false }
         if node.plugin == "v2ray-plugin" {
+            // Quantumult X requires a confirmed non-multiplexed server.
+            if target == .quanx, node.pluginMux != false { return false }
             // Only the WebSocket mode is modelled. These clients either expose
             // SIP003 directly or have a documented equivalent; the others must
             // skip instead of silently exporting plain Shadowsocks.
@@ -406,7 +755,10 @@ struct ConfigurationGenerator {
         let transport = node.transport?.lowercased() ?? "tcp"
         if transport == "tcp" || transport.isEmpty { return true }
         switch target {
-        case .clash, .clashApple, .clashMi, .karing:
+        case .clash:
+            if node.kind == .trojan { return ["ws", "grpc"].contains(transport) }
+            return ["ws", "http", "h2", "grpc"].contains(transport)
+        case .clashApple, .clashMi, .karing:
             if transport == "xhttp" { return node.kind == .vless }
             return ["ws", "http", "h2", "grpc", "httpupgrade"].contains(transport)
         case .surge:
@@ -415,10 +767,10 @@ struct ConfigurationGenerator {
             return ["ws", "http", "h2", "grpc", "httpupgrade", "xhttp"].contains(transport)
                 && (transport != "xhttp" || node.kind == .vless)
         case .loon:
-            if node.kind == .trojan { return transport == "ws" }
+            if node.kind == .trojan { return ["ws", "http"].contains(transport) }
             return ["ws", "http"].contains(transport)
         case .quanx:
-            return transport == "ws"
+            return transport == "ws" || (node.kind == .vmess && transport == "http" && !node.tls)
         case .hiddify, .singBox:
             return ["ws", "http", "h2", "grpc", "httpupgrade"].contains(transport)
         case .egern:
@@ -487,10 +839,11 @@ struct ConfigurationGenerator {
         for group: ResolvedSchemeGroup,
         remoteNodeNames: Set<String>
     ) -> (includesRemoteNodes: Bool, filter: String?) {
+        if group.allowedRemoteSourceIDs?.isEmpty == true { return (false, nil) }
         if !group.nodePatterns.isEmpty {
             return (true, remoteFilter(for: group.nodePatterns))
         }
-        let explicitRemoteNames = group.members.filter(remoteNodeNames.contains)
+        let explicitRemoteNames = group.members.filter { remoteNodeNames.contains($0) && !group.inlineNodeNames.contains($0) }
         return (!explicitRemoteNames.isEmpty, exactNameFilter(explicitRemoteNames))
     }
 
@@ -511,13 +864,54 @@ struct ConfigurationGenerator {
         let testURL: String
         let interval: Int
         let tolerance: Int
+        var algorithm: String? = nil
+        var parameters: [String: String]? = nil
+        var sourceFormat: String? = nil
+        var allowedRemoteSourceIDs: Set<UUID>? = nil
+        var inlineNodeNames: Set<String> = []
+    }
+
+    private func boundSourceIDs(_ group: RuleSchemeGroup, sourceURLHashes: [UUID: String]) -> Set<UUID>? {
+        let parameters = group.parameters ?? [:]
+        let restrictsSources = parameters["use"] != nil || parameters["tower-source-tags"] != nil
+            || parameters["resource-tag-regex"] != nil
+        guard restrictsSources else { return nil }
+        guard let raw = parameters["tower-source-bindings"], let data = raw.data(using: .utf8),
+              let bindings = (try? JSONSerialization.jsonObject(with: data)) as? [String: String] else { return [] }
+        var tags = Set(bindings.keys)
+        if let use = stringArray(group.parameters?["use"]) { tags.formIntersection(use) }
+        if let selected = stringArray(group.parameters?["tower-source-tags"]) { tags.formIntersection(selected) }
+        if let regex = group.parameters?["resource-tag-regex"] {
+            guard let expression = try? NSRegularExpression(pattern: regex) else { return [] }
+            tags = Set(tags.filter { expression.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil })
+        }
+        let hashes = Set(tags.compactMap { bindings[$0] })
+        return Set(sourceURLHashes.compactMap { hashes.contains($0.value) ? $0.key : nil })
+    }
+
+    private func sourceNodeAllowed(_ node: ProxyNode, parameters: [String: String], caseInsensitive: Bool) -> Bool {
+        if let exclude = parameters["exclude-filter"],
+           let expression = try? NSRegularExpression(pattern: exclude, options: caseInsensitive ? [.caseInsensitive] : []),
+           expression.firstMatch(in: node.name, range: NSRange(node.name.startIndex..., in: node.name)) != nil { return false }
+        if let excluded = parameters["exclude-type"] {
+            let kind = node.kind == .shadowsocks ? "ss" : node.kind.rawValue.lowercased()
+            if excluded.lowercased().split(separator: "|").map(String.init).contains(kind) { return false }
+        }
+        return true
+    }
+
+    private func groupSubscriptions(_ group: ResolvedSchemeGroup, from subscriptions: [RemoteSubscriptionEntry]) -> [RemoteSubscriptionEntry] {
+        guard let allowed = group.allowedRemoteSourceIDs else { return subscriptions }
+        return subscriptions.filter { allowed.contains($0.sourceID) }
     }
 
     private func resolveGroups(
         scheme: RuleScheme,
         nodes: [ProxyNode],
         target: ClientTarget,
-        preserveUnresolvedPatterns: Bool = false
+        preserveUnresolvedPatterns: Bool = false,
+        sourceURLHashes: [UUID: String] = [:],
+        remoteSourceIDs: Set<UUID> = []
     ) -> [ResolvedSchemeGroup] {
         let groupNames = Set(scheme.groups.map(\.name))
         let displayNames = nodes.map { NodeRegionResolver.displayName(for: $0) }
@@ -527,47 +921,64 @@ struct ConfigurationGenerator {
             var nodeNames: [String] = []
             var matchesAllNodes = false
             var nodePatterns: [String] = []
+            var inlineNodeNames: Set<String> = []
+            let sourceIDs = boundSourceIDs(group, sourceURLHashes: sourceURLHashes)
+            let sourcePatterns = Set(stringArray(group.parameters?["tower-source-patterns"]) ?? [])
+            let dynamicSourceNodes = nodes.filter { node in
+                (sourceIDs == nil || node.sourceID.map { sourceIDs!.contains($0) } == true)
+                    && sourceNodeAllowed(node, parameters: group.parameters ?? [:],
+                        caseInsensitive: group.sourceFormat == nil || group.sourceFormat == "subconverter")
+            }
 
             for member in group.members {
                 switch member {
                 case .reference(let name):
+                    guard group.kind != .smart || target == .egern else { continue }
                     // DIRECT and REJECT are spelled differently per client; any
                     // other reference points at a sibling group.
                     if groupNames.contains(name) {
                         members.append(name)
                     } else {
                         members.append(builtinPolicyName(name, target: target))
+                        if displayNames.contains(name) {
+                            nodeNames.append(name)
+                            if sourceIDs != nil { inlineNodeNames.insert(name) }
+                        }
                     }
                 case .nodePattern(let pattern):
-                    nodePatterns.append(pattern)
-                    if pattern.trimmingCharacters(in: .whitespacesAndNewlines) == ".*" {
-                        matchesAllNodes = true
-                    }
-                    let matches = matchingNodeNames(pattern, nodes: nodes, displayNames: displayNames)
+                    guard (try? NSRegularExpression(pattern: pattern)) != nil else { continue }
+                    let isSourcePattern = sourcePatterns.contains(pattern)
+                    if sourceIDs == nil || isSourcePattern { nodePatterns.append(pattern) }
+                    if pattern.trimmingCharacters(in: .whitespacesAndNewlines) == ".*" { matchesAllNodes = true }
+                    let pool = isSourcePattern ? dynamicSourceNodes : nodes
+                    let matches = matchingNodeNames(pattern, nodes: pool,
+                        displayNames: pool.map { NodeRegionResolver.displayName(for: $0) },
+                        caseInsensitive: group.sourceFormat == nil || group.sourceFormat == "subconverter")
                     members.append(contentsOf: matches)
                     nodeNames.append(contentsOf: matches)
+                    if sourceIDs != nil && !isSourcePattern { inlineNodeNames.formUnion(matches) }
                 }
             }
 
-            // A group whose regex matched nothing would be empty and rejected by
-            // every client, so it falls back to a direct connection.
-            if members.isEmpty && !(preserveUnresolvedPatterns && !nodePatterns.isEmpty) {
-                members = [builtinPolicyName("DIRECT", target: target)]
-            }
-
+            let hasRemotePool = !nodePatterns.isEmpty && preserveUnresolvedPatterns
+                && (sourceIDs == nil || !sourceIDs!.intersection(remoteSourceIDs).isEmpty)
+            let empty = members.isEmpty && !hasRemotePool
+            if empty { members = [builtinPolicyName("REJECT", target: target)] }
             return ResolvedSchemeGroup(
                 name: group.name,
-                kind: nodeNames.isEmpty && group.kind == .urlTest
-                    && !(preserveUnresolvedPatterns && !nodePatterns.isEmpty)
-                    ? .select
-                    : group.kind,
+                kind: empty ? .select : group.kind,
                 members: members.removingDuplicates(),
                 nodeNames: nodeNames.removingDuplicates(),
                 matchesAllNodes: matchesAllNodes,
                 nodePatterns: nodePatterns.removingDuplicates(),
                 testURL: group.testURLString ?? "http://www.gstatic.com/generate_204",
                 interval: group.interval ?? 300,
-                tolerance: group.tolerance ?? 50
+                tolerance: group.tolerance ?? 50,
+                algorithm: group.algorithm,
+                parameters: group.parameters,
+                sourceFormat: group.sourceFormat,
+                allowedRemoteSourceIDs: sourceIDs,
+                inlineNodeNames: inlineNodeNames
             )
         }
     }
@@ -578,10 +989,11 @@ struct ConfigurationGenerator {
     private func matchingNodeNames(
         _ pattern: String,
         nodes: [ProxyNode],
-        displayNames: [String]
+        displayNames: [String],
+        caseInsensitive: Bool = true
     ) -> [String] {
         if pattern == ".*" { return displayNames }
-        guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+        guard let expression = try? NSRegularExpression(pattern: pattern, options: caseInsensitive ? [.caseInsensitive] : []) else {
             return []
         }
 
@@ -790,11 +1202,12 @@ struct ConfigurationGenerator {
         """
         output += "\n" + clashNetworkBlock(scheme, target: target) + "\nproxies:\n"
         output += "\n"
-        output += inlineNodes.isEmpty ? "  []\n" : inlineNodes.map(clashNode).joined(separator: "\n") + "\n"
+        output += inlineNodes.isEmpty ? "  []\n" : inlineNodes.map { clashNode($0, target: target) }.joined(separator: "\n") + "\n"
         output += clashProxyProviders(remoteSubscriptions, target: target)
         output += "\nproxy-groups:\n"
         for group in groups {
-            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) }
+            let providerNames = groupSubscriptions(group, from: remoteSubscriptions).map(\.identifier)
+            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) || group.inlineNodeNames.contains($0) }
             let remoteSelection = remoteGroupSelection(
                 for: group,
                 remoteNodeNames: remoteNodeNames
@@ -807,19 +1220,27 @@ struct ConfigurationGenerator {
                     providerNames: remoteSelection.includesRemoteNodes ? providerNames : [],
                     providerFilter: remoteSelection.filter
                 )
-            case .urlTest:
+            case .urlTest, .fallback, .loadBalance, .relay:
                 var block = "  - name: \(yaml(group.name))\n"
-                block += "    type: url-test\n"
-                block += "    url: \(group.testURL)\n"
-                block += "    interval: \(group.interval)\n"
-                block += "    tolerance: \(group.tolerance)\n"
+                let type = group.kind == .urlTest ? "url-test" : group.kind == .fallback ? "fallback" : group.kind == .relay ? "relay" : "load-balance"
+                block += "    type: \(type)\n"
+                if group.kind == .loadBalance {
+                    block += "    strategy: \(loadBalanceAlgorithm(group.algorithm, target: target) ?? "consistent-hashing")\n"
+                }
+                if group.kind != .relay {
+                    block += "    url: \(yaml(group.testURL))\n"
+                    block += "    interval: \(group.interval)\n"
+                    if group.kind == .urlTest { block += "    tolerance: \(group.tolerance)\n" }
+                }
                 block += clashGroupMembers(
                     nodeNames: inlineMembers,
                     providerNames: remoteSelection.includesRemoteNodes ? providerNames : [],
                     providerFilter: remoteSelection.filter
                 )
                 output += block
+            case .smart, .conditional, .unsupported: break // Capability preflight blocks these.
             }
+            appendNativeOptions(group, target: target, to: &output)
         }
         let remoteResources = rulePlan.remoteResources
         if !remoteResources.isEmpty {
@@ -898,7 +1319,8 @@ struct ConfigurationGenerator {
         output += "\n[Proxy Group]\n"
         output += surgeRemoteSourceGroups(remoteSubscriptions)
         for group in groups {
-            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) }
+            let sourceGroupNames = groupSubscriptions(group, from: remoteSubscriptions).map(\.displayName)
+            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) || group.inlineNodeNames.contains($0) }
             let remoteSelection = remoteGroupSelection(
                 for: group,
                 remoteNodeNames: remoteNodeNames
@@ -912,7 +1334,7 @@ struct ConfigurationGenerator {
                     sourceGroupNames: includedSources,
                     remoteFilter: remoteSelection.filter
                 )
-            case .urlTest:
+            case .urlTest, .smart:
                 output += surgeURLTest(
                     name: group.name,
                     names: inlineMembers,
@@ -920,9 +1342,27 @@ struct ConfigurationGenerator {
                     remoteFilter: remoteSelection.filter,
                     testURL: group.testURL,
                     interval: group.interval,
-                    tolerance: group.tolerance
+                    tolerance: group.tolerance,
+                    smart: group.kind == .smart && target == .surge
                 )
+            case .fallback, .loadBalance:
+                var values = inlineMembers.map(confName)
+                values += surgeRemoteGroupParameters(sourceGroupNames: includedSources, remoteFilter: remoteSelection.filter)
+                values += ["url=\(confValue(group.testURL))", "interval=\(group.interval)"]
+                if group.kind == .loadBalance, loadBalanceAlgorithm(group.algorithm, target: .surge) == "persistent" {
+                    values.append("persistent=true")
+                }
+                output += "\(confName(group.name)) = \(group.kind == .fallback ? "fallback" : "load-balance"), \(values.joined(separator: ", "))\n"
+            case .conditional:
+                if let fields = stringArray(group.parameters?["subnet-fields"]) {
+                    output += "\(confName(group.name)) = subnet, " + fields.map { field in
+                        guard let equal = field.firstIndex(of: "=") else { return "" }
+                        return "\(surgeQuoted(String(field[..<equal]).trimmingCharacters(in: .whitespaces)))=\(confName(String(field[field.index(after: equal)...]).trimmingCharacters(in: .whitespaces)))"
+                    }.joined(separator: ", ") + "\n"
+                }
+            case .relay, .unsupported: break
             }
+            appendNativeOptions(group, target: target, to: &output)
         }
         output += "\n[Rule]\n"
         for entry in rulePlan.entries {
@@ -951,12 +1391,14 @@ struct ConfigurationGenerator {
         let remoteAliases = remoteSubscriptions.map(\.displayName)
         var filtersByGroupName: [String: String] = [:]
         var remoteFilters: [(name: String, pattern: String)] = []
+        var filterSources: [String: Set<UUID>] = [:]
         for (index, group) in groups.enumerated() {
             let selection = remoteGroupSelection(for: group, remoteNodeNames: remoteNodeNames)
             guard selection.includesRemoteNodes, let filter = selection.filter else { continue }
             let name = "塔台筛选 \(index + 1) · \(group.name)"
             filtersByGroupName[group.name] = name
             remoteFilters.append((name, filter))
+            filterSources[name] = Set(groupSubscriptions(group, from: remoteSubscriptions).map(\.sourceID))
         }
         var output = schemeHeader(
             scheme,
@@ -971,11 +1413,13 @@ struct ConfigurationGenerator {
         for node in inlineNodes { output += loonNode(node) + "\n" }
         output += loonRemoteProxySections(
             subscriptions: remoteSubscriptions,
-            filters: remoteFilters
+            filters: remoteFilters,
+            filterSourceIDs: filterSources
         )
         output += "\n[Proxy Group]\n"
         for group in groups {
-            var members = group.members.filter { !remoteNodeNames.contains($0) }
+            let remoteAliases = groupSubscriptions(group, from: remoteSubscriptions).map(\.displayName)
+            var members = group.members.filter { !remoteNodeNames.contains($0) || group.inlineNodeNames.contains($0) }
             let remoteSelection = remoteGroupSelection(
                 for: group,
                 remoteNodeNames: remoteNodeNames
@@ -991,9 +1435,22 @@ struct ConfigurationGenerator {
             switch group.kind {
             case .select:
                 output += "\(confName(group.name)) = select,\(memberList)\n"
-            case .urlTest:
-                output += "\(confName(group.name)) = url-test,\(memberList)"
-                output += ",url=\(group.testURL),interval=\(group.interval),tolerance=\(group.tolerance)\n"
+            case .urlTest, .fallback:
+                output += "\(confName(group.name)) = \(group.kind == .fallback ? "fallback" : "url-test"),\(memberList)"
+                output += ",url=\(confValue(group.testURL)),interval=\(group.interval)"
+                if group.kind == .urlTest { output += ",tolerance=\(group.tolerance)" }
+                output += "\n"
+            case .loadBalance:
+                output += "\(confName(group.name)) = load-balance,\(memberList),algorithm=\(loadBalanceAlgorithm(group.algorithm, target: .loon) ?? "Random")\n"
+            case .smart, .conditional, .relay, .unsupported: break
+            }
+            appendNativeOptions(group, target: .loon, to: &output)
+        }
+        let chains = groups.filter { $0.kind == .relay }
+        if !chains.isEmpty {
+            output += "\n[Proxy Chain]\n"
+            for chain in chains {
+                output += "\(confName(chain.name)) = \(chain.members.map(confName).joined(separator: ","))\n"
             }
         }
         output += "\n[Rule]\n"
@@ -1036,45 +1493,41 @@ struct ConfigurationGenerator {
         // rules while dropping every policy group.
         output += "\n\n[policy]\n"
         for group in groups {
-            if remoteSubscriptions.isEmpty {
-                switch group.kind {
-                case .select:
-                    let members = group.members.map(confName).joined(separator: ", ")
-                    output += "static=\(confName(group.name)), \(members)\n"
-                case .urlTest:
-                    output += "url-latency-benchmark=\(confName(group.name))"
-                    if group.matchesAllNodes {
-                        output += ", \(group.nodeNames.map(confName).joined(separator: ", "))"
-                    } else {
-                        output += ", server-tag-regex=\(quanXServerTagRegex(group.nodeNames))"
+            let remoteAliases = groupSubscriptions(group, from: remoteSubscriptions).map(\.displayName)
+            if group.kind == .conditional {
+                if let fields = stringArray(group.parameters?["ssid-members"]) {
+                    let mapped = fields.enumerated().map { offset, field -> String in
+                        if offset < 2 { return confName(builtinPolicyName(field, target: .quanx)) }
+                        guard let separator = field.firstIndex(of: ":") else { return field }
+                        let ssid = String(field[..<separator])
+                        let policy = String(field[field.index(after: separator)...])
+                        return "\(ssid):\(confName(builtinPolicyName(policy, target: .quanx)))"
                     }
-                    output += ", check-interval=\(group.interval), alive-checking=false"
-                    output += ", tolerance=\(group.tolerance)\n"
+                    output += "ssid=\(confName(group.name)), \(mapped.joined(separator: ", "))\n"
                 }
                 continue
             }
-            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) }
-            let remoteSelection = remoteGroupSelection(
-                for: group,
-                remoteNodeNames: remoteNodeNames
-            )
-            let remoteParameters = !remoteSelection.includesRemoteNodes
-                ? []
-                : quanXRemotePolicyParameters(
-                    aliases: remoteAliases,
-                    filter: remoteSelection.filter
-                )
+            let type: String
             switch group.kind {
-            case .select:
-                let members = (inlineMembers.map(confName) + remoteParameters).joined(separator: ", ")
-                output += "static=\(confName(group.name)), \(members)\n"
-            case .urlTest:
-                output += "url-latency-benchmark=\(confName(group.name))"
-                let members = inlineMembers.map(confName) + remoteParameters
-                if !members.isEmpty { output += ", \(members.joined(separator: ", "))" }
-                output += ", check-interval=\(group.interval), alive-checking=false"
-                output += ", tolerance=\(group.tolerance)\n"
+            case .select: type = "static"
+            case .urlTest: type = "url-latency-benchmark"
+            case .fallback: type = "available"
+            case .loadBalance: type = loadBalanceAlgorithm(group.algorithm, target: .quanx) ?? "dest-hash"
+            case .smart, .conditional, .relay, .unsupported: continue
             }
+            var members = group.members.filter { !remoteNodeNames.contains($0) || group.inlineNodeNames.contains($0) }.map(confName)
+            let selection = remoteGroupSelection(for: group, remoteNodeNames: remoteNodeNames)
+            if !remoteSubscriptions.isEmpty, selection.includesRemoteNodes {
+                members += quanXRemotePolicyParameters(aliases: remoteAliases, filter: selection.filter)
+            }
+            // Local candidates have already been filtered by Tower. List their
+            // tags explicitly: regex-only latency groups may be omitted by QX.
+            // Explicit ordering matters for available and is safe for every QX type.
+            output += "\(type)=\(confName(group.name)), \(members.joined(separator: ", "))"
+            if group.kind == .urlTest {
+                output += ", check-interval=\(group.interval), alive-checking=\(group.parameters?["alive-checking"] ?? "false"), tolerance=\(group.tolerance)"
+            }
+            output += "\n"
         }
         // Every module is emitted exactly once and in this order. Quantumult X
         // rejects the whole file for either mistake: a missing module is
@@ -1153,7 +1606,7 @@ struct ConfigurationGenerator {
         proxies:
         """
         output += "\n"
-        output += inlineNodes.isEmpty ? "  []\n" : inlineNodes.map(clashNode).joined(separator: "\n") + "\n"
+        output += inlineNodes.isEmpty ? "  []\n" : inlineNodes.map { clashNode($0, target: target) }.joined(separator: "\n") + "\n"
         output += clashProxyProviders(remoteSubscriptions, target: target)
         output += "\nproxy-groups:\n"
         output += clashSelectGroup(
@@ -1234,7 +1687,7 @@ struct ConfigurationGenerator {
         return output
     }
 
-    private func clashNode(_ node: ProxyNode) -> String {
+    private func clashNode(_ node: ProxyNode, target: ClientTarget) -> String {
         var values: [String] = [
             "  - name: \(yaml(NodeRegionResolver.displayName(for: node)))",
             "    type: \(node.kind.rawValue)",
@@ -1248,6 +1701,7 @@ struct ConfigurationGenerator {
                 values.append("    plugin: v2ray-plugin")
                 values.append("    plugin-opts:")
                 values.append("      mode: websocket")
+                if let mux = node.pluginMux { values.append("      mux: \(mux ? "true" : "false")") }
                 if node.tls { values.append("      tls: true") }
                 if let host = node.hostHeader, !host.isEmpty { values.append("      host: \(yaml(host))") }
                 if let path = node.exportablePath { values.append("      path: \(yaml(path))") }
@@ -1258,6 +1712,13 @@ struct ConfigurationGenerator {
                 if let host = node.obfsParam, !host.isEmpty {
                     values.append("      host: \(yaml(host))")
                 }
+            }
+            // Preserve native SS-over-TLS fields for Shadowrocket and Karing.
+            // This is distinct from simple-obfs TLS and SIP003 plugins.
+            if [.shadowrocket, .karing].contains(target), node.tls, (node.plugin ?? "").isEmpty,
+               simpleObfsMode(node) == nil {
+                appendClashTransport(node, target: target, to: &values)
+                appendClashALPN(node, to: &values)
             }
         case .shadowsocksR:
             values += [
@@ -1275,13 +1736,13 @@ struct ConfigurationGenerator {
                 "    cipher: \(yaml(node.cipher ?? "auto"))",
                 "    udp: true"
             ]
-            appendClashTransport(node, to: &values)
+            appendClashTransport(node, target: target, to: &values)
         case .vless:
             values += ["    uuid: \(yaml(node.exportableUUID ?? ""))", "    udp: true"]
-            appendClashTransport(node, to: &values)
+            appendClashTransport(node, target: target, to: &values)
         case .trojan:
             values += ["    password: \(yaml(node.password ?? ""))", "    udp: true"]
-            appendClashTransport(node, to: &values)
+            appendClashTransport(node, target: target, to: &values)
         case .hysteria2:
             values += [
                 "    password: \(yaml(node.password ?? ""))",
@@ -1369,6 +1830,10 @@ struct ConfigurationGenerator {
             if let value = node.minIdleSession { values.append("    min-idle-session: \(value)") }
             appendClashALPN(node, to: &values)
             appendClashCertificateFingerprint(node, to: &values)
+            if [.shadowrocket, .karing].contains(target) {
+                values.append("    tls: true")
+                appendClashReality(node, to: &values)
+            }
             appendClashClientFingerprint(node, to: &values)
         case .snell:
             values.append("    psk: \(yaml(node.password ?? ""))")
@@ -1386,6 +1851,14 @@ struct ConfigurationGenerator {
             if let username = node.username, !username.isEmpty { values.append("    username: \(yaml(username))") }
             if let password = node.password, !password.isEmpty { values.append("    password: \(yaml(password))") }
             values.append("    tls: \(node.tls)")
+            if node.tls {
+                if let sni = node.sni, !sni.isEmpty { values.append("    sni: \(yaml(sni))") }
+                values.append("    skip-cert-verify: \(node.skipCertificateVerification)")
+                appendClashALPN(node, to: &values)
+                appendClashCertificateFingerprint(node, to: &values)
+                if [.shadowrocket, .karing].contains(target) { appendClashReality(node, to: &values) }
+                appendClashClientFingerprint(node, to: &values)
+            }
         case .unknown:
             break
         }
@@ -1434,10 +1907,13 @@ struct ConfigurationGenerator {
         values.append("    fingerprint: \(yaml(fingerprint))")
     }
 
-    private func appendClashTransport(_ node: ProxyNode, to values: inout [String]) {
+    private func appendClashTransport(_ node: ProxyNode, target: ClientTarget, to values: inout [String]) {
         values.append("    tls: \(node.tls)")
         values.append("    skip-cert-verify: \(node.skipCertificateVerification)")
-        if let sni = node.sni, !sni.isEmpty { values.append("    servername: \(yaml(sni))") }
+        if let sni = node.sni, !sni.isEmpty {
+            let key = target == .clash && node.kind == .trojan ? "sni" : "servername"
+            values.append("    \(key): \(yaml(sni))")
+        }
         appendClashCertificateFingerprint(node, to: &values)
         appendClashReality(node, to: &values)
         if node.kind == .vless, let flow = node.flow, !flow.isEmpty {
@@ -1948,7 +2424,8 @@ struct ConfigurationGenerator {
         testURL: String = "http://www.gstatic.com/generate_204",
         interval: Int = 300,
         tolerance: Int = 50,
-        hidden: Bool = false
+        hidden: Bool = false,
+        smart: Bool = false
     ) -> String {
         guard !names.isEmpty || !sourceGroupNames.isEmpty else {
             return surgeSelect(name: name, values: ["DIRECT"], hidden: hidden)
@@ -1958,13 +2435,15 @@ struct ConfigurationGenerator {
             sourceGroupNames: sourceGroupNames,
             remoteFilter: remoteFilter
         )
-        parameters += [
-            "url=\(confValue(testURL))",
-            "interval=\(interval)",
-            "tolerance=\(tolerance)"
-        ]
+        if !smart {
+            parameters += [
+                "url=\(confValue(testURL))",
+                "interval=\(interval)",
+                "tolerance=\(tolerance)"
+            ]
+        }
         if hidden { parameters.append("hidden=true") }
-        return "\(confName(name)) = url-test, \(parameters.joined(separator: ", "))\n"
+        return "\(confName(name)) = \(smart ? "smart" : "url-test"), \(parameters.joined(separator: ", "))\n"
     }
 
     private func surgeRemoteSourceGroups(
@@ -2086,7 +2565,8 @@ struct ConfigurationGenerator {
 
     private func loonRemoteProxySections(
         subscriptions: [RemoteSubscriptionEntry],
-        filters: [(name: String, pattern: String)]
+        filters: [(name: String, pattern: String)],
+        filterSourceIDs: [String: Set<UUID>] = [:]
     ) -> String {
         guard !subscriptions.isEmpty else { return "" }
         var output = "\n[Remote Proxy]\n"
@@ -2094,9 +2574,13 @@ struct ConfigurationGenerator {
             output += "\(confName(subscription.displayName)) = \(subscription.urlString)\n"
         }
         output += "\n[Remote Filter]\n"
-        let aliases = subscriptions.map { confName($0.displayName) }.joined(separator: ",")
         for filter in filters {
-            output += "\(confName(filter.name)) = NameRegex,\(aliases),FilterKey = \(loonQuoted(filter.pattern))\n"
+            let allowed = filterSourceIDs[filter.name]
+            let aliases = subscriptions.filter { allowed == nil || allowed!.contains($0.sourceID) }
+                .map { confName($0.displayName) }.joined(separator: ",")
+            if !aliases.isEmpty {
+                output += "\(confName(filter.name)) = NameRegex,\(aliases),FilterKey = \(loonQuoted(filter.pattern))\n"
+            }
         }
         return output
     }
@@ -2182,18 +2666,33 @@ struct ConfigurationGenerator {
         case .socks5:
             values = ["Socks5", node.server, "\(node.port)"]
             values += loonCredentialPair(node)
+            if node.tls {
+                values.append("over-tls=true")
+                appendValue(node.sni, key: "sni", to: &values)
+                appendValue(node.alpn, key: "alpn", to: &values)
+                if node.skipCertificateVerification { values.append("skip-cert-verify=true") }
+            }
             values.append("udp=true")
         case .http:
             values = [node.tls ? "https" : "http", node.server, "\(node.port)"]
             values += loonCredentialPair(node)
             if node.tls {
                 if node.skipCertificateVerification { values.append("skip-cert-verify=true") }
-                appendValue(node.sni, key: "tls-name", to: &values)
+                appendValue(node.sni, key: "sni", to: &values)
+                appendValue(node.alpn, key: "alpn", to: &values)
             }
         // Loon implements neither, and writes(_:to:excluding:) filters them
         // out before generation, so this branch is defensive only.
         case .hysteria, .tuic, .snell, .unknown:
             values = ["Direct"]
+        }
+        // Confirmed in Loon on device: these TLS protocols also accept
+        // Reality's public key and short id, not only VLESS.
+        if [.anytls, .trojan].contains(node.kind), node.usesReality {
+            values.removeAll { $0.hasPrefix("tls-name=") }
+            appendValue(node.sni, key: "sni", to: &values)
+            values.append("public-key=\(loonQuoted(node.realityPublicKey ?? ""))")
+            appendValue(node.realityShortID, key: "short-id", to: &values)
         }
         return "\(name) = \(values.joined(separator: ","))"
     }
@@ -2205,7 +2704,10 @@ struct ConfigurationGenerator {
         let username = node.username ?? ""
         let password = node.password ?? ""
         guard !username.isEmpty || !password.isEmpty else { return [] }
-        return [loonQuoted(username), loonQuoted(password)]
+        // Loon 3.5.0 treats quotes around a simple username as part of the
+        // credential. Keep quoting for names that require field escaping.
+        let simple = !username.isEmpty && username.range(of: "^[A-Za-z0-9_.@-]+$", options: .regularExpression) != nil
+        return [simple ? username : loonQuoted(username), loonQuoted(password)]
     }
 
     private func appendLoonTransportAndTLS(_ node: ProxyNode, to values: inout [String]) {
@@ -2293,7 +2795,7 @@ struct ConfigurationGenerator {
         for group in regionGroups {
             if remoteSubscriptions.isEmpty {
                 output += "static=\(group.name), \(([group.automaticName] + group.nodeNames).map(confName).joined(separator: ", "))\n"
-                output += "url-latency-benchmark=\(group.automaticName), server-tag-regex=\(quanXServerTagRegex(group.nodeNames)), check-interval=300, alive-checking=false, tolerance=50\n"
+                output += "url-latency-benchmark=\(group.automaticName), \(group.nodeNames.map(confName).joined(separator: ", ")), check-interval=300, alive-checking=false, tolerance=50\n"
                 continue
             }
             let inlineNames = group.nodeNames.filter { !remoteNodeNames.contains($0) }.map(confName)
@@ -2358,6 +2860,9 @@ struct ConfigurationGenerator {
                 values.append("obfs=\(node.tls ? "wss" : "ws")")
                 appendValue(node.hostHeader, key: "obfs-host", to: &values)
                 appendValue(node.exportablePath, key: "obfs-uri", to: &values)
+            } else if node.tls {
+                values.append("obfs=over-tls")
+                appendValue(node.sni, key: "obfs-host", to: &values)
             } else if let mode = simpleObfsMode(node) {
                 values.append("obfs=\(mode)")
                 appendValue(node.obfsParam, key: "obfs-host", to: &values)
@@ -2390,13 +2895,11 @@ struct ConfigurationGenerator {
                 // `obfs=over-tls` / `obfs-host` belong to VMess and VLESS.
                 values.append("over-tls=true")
                 appendValue(node.sni, key: "tls-host", to: &values)
-                appendQuanXCertificatePolicy(node, to: &values)
             }
         case .anytls:
             prefix = "anytls"
             values += ["password=\(confValue(node.password ?? ""))", "over-tls=true"]
             appendValue(node.sni, key: "tls-host", to: &values)
-            appendQuanXCertificatePolicy(node, to: &values)
             values.append("udp-relay=true")
         case .socks5:
             prefix = "socks5"
@@ -2406,11 +2909,18 @@ struct ConfigurationGenerator {
             prefix = "http"
             appendValue(node.username, key: "username", to: &values)
             appendValue(node.password, key: "password", to: &values)
-            if node.tls { values.append("over-tls=true") }
+
         // Quantumult X implements none of these, and writes(_:to:excluding:)
         // filters them out before generation, so this is defensive only.
         case .hysteria, .hysteria2, .tuic, .wireguard, .snell, .unknown:
             prefix = "http"
+        }
+        if [.socks5, .http].contains(node.kind), node.tls {
+            values.append("over-tls=true")
+            appendValue(node.sni, key: "tls-host", to: &values)
+        }
+        if node.tls || [.trojan, .anytls].contains(node.kind) {
+            appendQuanXTLS(node, to: &values)
         }
         values.append("tag=\(confName(NodeRegionResolver.displayName(for: node)))")
         return "\(prefix)=\(values.joined(separator: ", "))"
@@ -2424,26 +2934,32 @@ struct ConfigurationGenerator {
                 : (node.hostHeader ?? node.sni)
             appendValue(transportHost, key: "obfs-host", to: &values)
             appendValue(node.exportablePath ?? "/", key: "obfs-uri", to: &values)
+        } else if node.kind == .vmess, node.transport?.lowercased() == "http" {
+            values.append("obfs=http")
+            appendValue(node.hostHeader, key: "obfs-host", to: &values)
+            appendValue(node.exportablePath ?? "/", key: "obfs-uri", to: &values)
         } else if node.tls {
             values.append("obfs=over-tls")
             appendValue(node.sni, key: "obfs-host", to: &values)
         }
+    }
+
+    private func appendQuanXTLS(_ node: ProxyNode, to values: inout [String]) {
         if node.usesReality {
             appendValue(node.realityPublicKey, key: "reality-base64-pubkey", to: &values)
             appendValue(node.realityShortID, key: "reality-hex-shortid", to: &values)
-            if let flow = node.flow, !flow.isEmpty { values.append("vless-flow=\(confValue(flow))") }
+        } else {
+            let protocols = ALPNList.values(node.alpn)
+            if !protocols.isEmpty, protocols.allSatisfy({ !$0.utf8.isEmpty && $0.utf8.count <= 255 }) {
+                let bytes = protocols.flatMap { [UInt8($0.utf8.count)] + Array($0.utf8) }
+                values.append("tls-alpn=\(bytes.map { String(format: "%02x", $0) }.joined())")
+            }
+            if node.skipCertificateVerification { values.append("tls-verification=false") }
         }
-        // Only once a TLS layer exists is there a certificate to skip checking.
-        // A plain `ws` or bare TCP node has none, and an airport can still ship
-        // one flagged insecure — Quantumult X rejects the whole file over the
-        // stray key: "配置文件语法错误, line 119".
-        if node.tls { appendQuanXCertificatePolicy(node, to: &values) }
-    }
-
-    // Trojan and Hysteria 2 always negotiate TLS in Quantumult X, so they need
-    // the same certificate escape hatch that the obfs-based protocols get.
-    private func appendQuanXCertificatePolicy(_ node: ProxyNode, to values: inout [String]) {
-        if node.skipCertificateVerification { values.append("tls-verification=false") }
+        if node.kind == .vless, let flow = node.flow, !flow.isEmpty {
+            let mapped = flow == "xtls-rprx-vision-udp443" ? "xtls-rprx-vision" : flow
+            values.append("vless-flow=\(confValue(mapped))")
+        }
     }
 
     // Quantumult X names the VMess cipher with the same method key it uses for
@@ -2500,6 +3016,7 @@ struct ConfigurationGenerator {
     /// Shared by the built-in presets and by imported schemes, whose policy
     /// names come from the imported file rather than from `RulePolicy`.
     private func mappedRule(_ rule: String, policyName: String, target: ClientTarget) -> String? {
+        let policyName = [.surge, .loon, .quanx].contains(target) ? confName(policyName) : policyName
         var parts = rule.split(separator: ",", omittingEmptySubsequences: false).map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines)
         }
@@ -2748,15 +3265,6 @@ struct ConfigurationGenerator {
             .replacingOccurrences(of: "[", with: "［")
             .replacingOccurrences(of: "]", with: "］")
             .trimmingCharacters(in: .whitespaces)
-    }
-
-    private func quanXServerTagRegex(_ nodeNames: [String]) -> String {
-        let alternatives = nodeNames
-            .map(confName)
-            .removingDuplicates()
-            .map(NSRegularExpression.escapedPattern(for:))
-            .joined(separator: "|")
-        return "^(?:\(alternatives))$"
     }
 
     private func confValue(_ value: String) -> String {
@@ -3176,6 +3684,7 @@ extension ConfigurationGenerator {
             if node.plugin == "v2ray-plugin" {
                 outbound["plugin"] = "v2ray-plugin"
                 var options = ["mode=websocket"]
+                if let mux = node.pluginMux { options.append("mux=\(mux ? "1" : "0")") }
                 if node.tls { options.append("tls") }
                 if let host = node.hostHeader, !host.isEmpty { options.append("host=\(host)") }
                 if let path = node.exportablePath { options.append("path=\(path)") }
@@ -3231,9 +3740,11 @@ extension ConfigurationGenerator {
         case .wireguard:
             outbound["type"] = "wireguard"
             var addresses: [String] = []
-            if let value = node.wireGuardIPv4, !value.isEmpty { addresses.append(value) }
-            if let value = node.wireGuardIPv6, !value.isEmpty { addresses.append(value) }
-            outbound["address"] = addresses
+            if let value = node.wireGuardIPv4, !value.isEmpty { addresses.append(value.contains("/") ? value : "\(value)/32") }
+            if let value = node.wireGuardIPv6, !value.isEmpty { addresses.append(value.contains("/") ? value : "\(value)/128") }
+            // Legacy WireGuard outbounds (Hiddify) use local_address;
+            // address belongs to the newer sing-box endpoint schema.
+            outbound["local_address"] = addresses
             outbound["private_key"] = node.wireGuardPrivateKey ?? ""
             outbound["peer_public_key"] = node.wireGuardPublicKey ?? ""
             if let value = node.wireGuardPreSharedKey, !value.isEmpty { outbound["pre_shared_key"] = value }
@@ -3305,6 +3816,9 @@ extension ConfigurationGenerator {
     }
 
     private func singBoxTransport(_ node: ProxyNode) -> [String: Any]? {
+        // Only these outbound schemas accept V2Ray transport. Shadowsocks
+        // carries WebSocket/TLS through plugin_opts, never a second transport.
+        guard [.vmess, .vless, .trojan].contains(node.kind) else { return nil }
         guard let transport = node.transport, !transport.isEmpty, transport != "tcp" else { return nil }
         switch transport {
         case "ws":
@@ -3359,13 +3873,17 @@ extension ConfigurationGenerator {
         var outbounds: [[String: Any]] = groups.map { group in
             var outbound: [String: Any] = [
                 "tag": group.name,
-                "type": group.kind == .urlTest ? "urltest" : "selector",
+                "type": group.kind != .select ? "urltest" : "selector",
                 "outbounds": group.members.isEmpty ? [Self.singBoxDirectTag] : group.members
             ]
-            if group.kind == .urlTest {
+            if group.kind != .select {
                 outbound["url"] = group.testURL
                 outbound["interval"] = "\(group.interval)s"
                 outbound["tolerance"] = group.tolerance
+            }
+            for (key, value) in nativeOptions(group, target: target) {
+                if ["true", "false"].contains(value) { outbound[key] = value == "true" }
+                else { outbound[key] = value }
             }
             return outbound
         }
@@ -3667,7 +4185,8 @@ extension ConfigurationGenerator {
 
         output += "\npolicy_groups:\n"
         for group in groups {
-            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) }
+            let remoteURLs = groupSubscriptions(group, from: remoteSubscriptions).map(\.urlString)
+            let inlineMembers = group.members.filter { !remoteNodeNames.contains($0) || group.inlineNodeNames.contains($0) }
             let remoteSelection = remoteGroupSelection(
                 for: group,
                 remoteNodeNames: remoteNodeNames
@@ -3681,16 +4200,32 @@ extension ConfigurationGenerator {
                     urls: urls,
                     filter: remoteSelection.filter
                 )
-            case .urlTest:
-                output += egernAutoTest(
-                    name: group.name,
-                    policies: inlineMembers,
-                    urls: urls,
-                    filter: remoteSelection.filter,
-                    interval: group.interval,
-                    tolerance: group.tolerance
-                )
+            case .urlTest, .smart, .fallback, .loadBalance:
+                let type = group.kind == .urlTest ? "auto_test" : group.kind == .smart ? "smart" : group.kind == .fallback ? "fallback" : "load_balance"
+                output += "  - \(type):\n      name: \(yaml(group.name))\n"
+                output += egernGroupMembers(policies: inlineMembers, urls: urls, filter: remoteSelection.filter)
+                if group.kind == .loadBalance {
+                    output += "      algorithm: \(loadBalanceAlgorithm(group.algorithm, target: .egern) ?? "hash")\n"
+                }
+                if group.kind == .urlTest || group.kind == .fallback {
+                    output += "      interval: \(group.interval)\n      latency_test_url: \(yaml(group.testURL))\n"
+                }
+                if group.kind == .urlTest { output += "      tolerance: \(group.tolerance)\n" }
+                if group.kind == .smart, let priorities = orderedEgernPriorities(group.parameters) {
+                    output += "      priorities:\n"
+                    for (pattern, coefficient) in priorities {
+                        output += "        \(yaml(pattern)): \(coefficient)\n"
+                    }
+                }
+            case .conditional:
+                if let rules = safeConditionalRules(group.parameters?["rules"]),
+                   let fallback = group.parameters?["default_policy"] {
+                    output += "  - conditional:\n      name: \(yaml(group.name))\n"
+                    output += "      rules: \(rules)\n      default_policy: \(yaml(fallback))\n"
+                }
+            case .relay, .unsupported: break
             }
+            appendNativeOptions(group, target: .egern, to: &output)
         }
 
         output += "\nrules:\n"
@@ -3860,6 +4395,7 @@ extension ConfigurationGenerator {
             type = "vless"
             endpoint()
             body.append("      user_id: \(yaml(node.exportableUUID ?? ""))")
+            if let flow = node.flow, !flow.isEmpty { body.append("      flow: \(yaml(flow))") }
         case .snell:
             type = "snell"
             endpoint()
@@ -3879,15 +4415,31 @@ extension ConfigurationGenerator {
         }
 
         body.append("      udp_relay: true")
-        if node.usesReality {
+        if node.usesReality, ![.vmess, .vless].contains(node.kind) {
             body.append("      reality:")
             body.append("        public_key: \(yaml(node.realityPublicKey ?? ""))")
             if let shortID = node.realityShortID, !shortID.isEmpty {
                 body.append("        short_id: \(yaml(shortID))")
             }
         }
-        if node.skipCertificateVerification, node.kind != .shadowsocks {
-            body.append("      skip_tls_verify: true")
+        if ![.shadowsocks, .vmess, .vless].contains(node.kind) {
+            body.append("      skip_tls_verify: \(node.skipCertificateVerification ? "true" : "false")")
+            if let fingerprint = node.certificateFingerprint, !fingerprint.isEmpty {
+                body.append("      fingerprint_sha256: \(yaml(fingerprint))")
+            }
+        }
+        if [.http, .socks5].contains(node.kind), node.tls, let sni = node.sni {
+            body.append("      sni: \(yaml(sni))")
+        }
+        if node.kind == .hysteria2 {
+            if let obfs = hysteria2Obfs(node) {
+                body.append("      obfs: \(yaml(obfs.type))")
+                body.append("      obfs_password: \(yaml(obfs.password))")
+            }
+            if let bandwidth = node.upMbps { body.append("      bandwidth: \(bandwidth)") }
+        }
+        if node.kind == .tuic, let mode = node.udpRelayMode {
+            body.append("      udp_relay_mode: \(yaml(mode))")
         }
         if let transport = egernTransport(node) { body.append(contentsOf: transport) }
         return "  - \(type):\n" + body.joined(separator: "\n") + "\n"
@@ -3896,9 +4448,24 @@ extension ConfigurationGenerator {
     /// Websocket nests under `transport`, keyed `ws` or `wss` by whether the
     /// node negotiates TLS.
     private func egernTransport(_ node: ProxyNode) -> [String]? {
-        guard let transport = node.transport, transport != "tcp" else { return nil }
+        if node.kind == .trojan, node.transport == "ws" {
+            var lines = ["      websocket:", "        path: \(yaml(node.exportablePath ?? "/"))"]
+            if let host = node.exportableTransportHost { lines.append("        host: \(yaml(host))") }
+            return lines
+        }
+        guard [.vmess, .vless].contains(node.kind) else { return nil }
+        let transport = node.transport ?? "tcp"
+        if transport == "tcp" && !node.tls && !node.usesReality { return nil }
         var lines = ["      transport:"]
         switch transport {
+        case "tcp":
+            lines.append("        tls:")
+            if let sni = node.sni { lines.append("          sni: \(yaml(sni))") }
+            if node.usesReality {
+                lines.append("          reality:")
+                lines.append("            public_key: \(yaml(node.realityPublicKey ?? ""))")
+                if let shortID = node.realityShortID { lines.append("            short_id: \(yaml(shortID))") }
+            }
         case "ws":
             lines.append("        \(node.tls ? "wss" : "ws"):")
             if let path = node.exportablePath { lines.append("          path: \(yaml(path))") }
@@ -3931,7 +4498,10 @@ extension ConfigurationGenerator {
         default:
             return nil
         }
-        if node.skipCertificateVerification { lines.append("          skip_tls_verify: true") }
+        if node.tls || node.usesReality {
+            lines.append("          skip_tls_verify: \(node.skipCertificateVerification ? "true" : "false")")
+            if let fingerprint = node.certificateFingerprint { lines.append("          fingerprint_sha256: \(yaml(fingerprint))") }
+        }
         return lines
     }
 

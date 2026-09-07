@@ -982,6 +982,12 @@ private struct ConversionSummary: View {
                 Divider().frame(height: 38)
                 MetricPill(value: configuration.skippedNodeCount, label: "已跳过")
             }
+            ForEach(configuration.diagnostics, id: \.self) { message in
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if configuration.skippedNodeCount > 0 {
                 Label(
                     "目标客户端不支持、或您在协议筛选里关掉的节点不会写入配置，原节点仍保留在塔台中。",

@@ -10,21 +10,9 @@ trap 'find "$tower_install_tmp" -type f -delete; rmdir "$tower_install_tmp"' EXI
 
 tower_device_json="$tower_install_tmp/devices.json"
 xcrun devicectl list devices --json-output "$tower_device_json" >/dev/null
-tower_device_id="$(
-  jq -er '[
-    .result.devices[]
-    | select(
-        .hardwareProperties.platform == "iOS"
-        and .connectionProperties.pairingState == "paired"
-        and .deviceProperties.bootState == "booted"
-        and (
-          .connectionProperties.transportType == "wired"
-          or .connectionProperties.tunnelState == "connected"
-        )
-      )
-  ] | if length == 1 then .[0].identifier
-      else error("需要且只能连接一台可用的 iPhone") end' "$tower_device_json"
-)"
+tower_xcode_devices="$tower_install_tmp/xcode-devices.json"
+xcrun xcdevice list >"$tower_xcode_devices"
+tower_device_id="$(python3 Scripts/select_device.py "$tower_device_json" "$tower_xcode_devices")"
 
 tower_profile_plist="$tower_install_tmp/profile.plist"
 tower_team_ids="$(
@@ -50,13 +38,15 @@ xcodebuild -quiet \
   -project Tower.xcodeproj \
   -scheme Tower \
   -configuration Debug \
-  -destination "id=$tower_device_id" \
+  -destination "platform=iOS,id=$tower_device_id" \
+  -sdk iphoneos \
   -derivedDataPath "$tower_derived_data" \
   CODE_SIGN_STYLE=Automatic \
   DEVELOPMENT_TEAM="$tower_team_id" \
   build
 
 tower_app="$tower_derived_data/Build/Products/Debug-iphoneos/Tower.app"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$tower_app/Info.plist")" == iPhoneOS ]] || { echo '构建产物不是真机平台，停止安装'; exit 1; }
 xcrun devicectl device install app --device "$tower_device_id" "$tower_app" >/dev/null 2>&1
 printf '覆盖安装成功，正在启动…\n'
 xcrun devicectl device process launch \

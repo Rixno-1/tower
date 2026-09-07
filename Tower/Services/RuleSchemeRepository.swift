@@ -52,6 +52,17 @@ struct RuleSchemeRepository {
 
     /// Rule lines for one ruleset, comments and blank lines already removed.
     func lines(for resource: RuleSchemeRuleset.Resource) -> [String] {
+        if let url = resource.domainSetURL {
+            return lines(for: .remote(url)).compactMap { raw in
+                let domain = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
+                let suffix = domain.hasPrefix(".")
+                let value = suffix ? String(domain.dropFirst()) : domain
+                guard !value.isEmpty,
+                      !value.contains(where: { $0.isWhitespace || ",/\"#;".contains($0) }) else { return nil }
+                return "\(suffix ? "DOMAIN-SUFFIX" : "DOMAIN"),\(value)"
+            }
+        }
         switch resource {
         case .inline(let rule):
             return [rule]
@@ -62,6 +73,12 @@ struct RuleSchemeRepository {
                 in: bundle
             )
         }
+    }
+
+    func hasDomainSetContent(_ resource: RuleSchemeRuleset.Resource) -> Bool {
+        guard let url = resource.domainSetURL else { return true }
+        return downloadStore?.hasCachedRules(for: url) == true
+            || bundledContent(named: Self.bundledResourceName(for: url)) != nil
     }
 
     /// `payload:` is part of the remote resource contract. Removing it is

@@ -255,7 +255,7 @@ final class ConfigurationGeneratorTests: XCTestCase {
             ],
             .quanx: [
                 "static=🇭🇰 香港, 🇭🇰 香港 · 延迟优选, Hong Kong",
-                "url-latency-benchmark=🇭🇰 香港 · 延迟优选, server-tag-regex=^(?:Hong Kong)$, check-interval="
+                "url-latency-benchmark=🇭🇰 香港 · 延迟优选, Hong Kong, check-interval="
             ]
         ]
 
@@ -297,7 +297,7 @@ final class ConfigurationGeneratorTests: XCTestCase {
             latencyLines.first { $0.hasPrefix("url-latency-benchmark=🇰🇷 韩国 · 延迟优选,") }
         )
         XCTAssertTrue(
-            koreaLine.contains("server-tag-regex=^(?:🇰🇷 South Korea \\(Premium\\)\\+)$"),
+            koreaLine.contains("🇰🇷 South Korea (Premium)+"),
             String(koreaLine)
         )
     }

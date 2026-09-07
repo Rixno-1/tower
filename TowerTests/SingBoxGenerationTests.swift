@@ -11,14 +11,14 @@ final class SingBoxGenerationTests: XCTestCase {
         _ kind: ProxyKind,
         name: String = "HK 01",
         transport: String? = nil,
-        tls: Bool = true,
+        tls: Bool? = nil,
         version: Int? = nil
     ) -> ProxyNode {
         ProxyNode(
             kind: kind, name: name, server: "hk.example.com", port: 443,
             cipher: kind == .shadowsocks ? "aes-256-gcm" : "auto",
             password: "pw", uuid: "b831381d-6324-4d53-ad4f-8cda48b30811",
-            username: "user", transport: transport, tls: tls,
+            username: "user", transport: transport, tls: tls ?? (kind != .shadowsocks),
             sni: "hk.example.com", hostHeader: "hk.example.com",
             path: transport == "ws" ? "/ws" : nil,
             version: version, rawURI: "x://y"
@@ -29,6 +29,57 @@ final class SingBoxGenerationTests: XCTestCase {
         let content = generator.generate(nodes: nodes, preset: preset, target: target).content
         let object = try JSONSerialization.jsonObject(with: Data(content.utf8))
         return try XCTUnwrap(object as? [String: Any])
+    }
+
+    func testHiddifySkipsSOCKSTLSAndRealityButKeepsPlainSOCKSAndHTTPS() {
+        let secure = node(.socks5, name: "SOCKS TLS", tls: true)
+        var reality = node(.socks5, name: "SOCKS Reality", tls: true)
+        reality.realityPublicKey = "fixture-public-key"
+        reality.realityShortID = "0123456789abcdef"
+        let plain = node(.socks5, name: "Plain SOCKS", tls: false)
+        let https = node(.http, name: "HTTPS", tls: true)
+        for target: ClientTarget in [.hiddify, .singBox] {
+            let result = generator.generate(nodes: [secure, reality, plain, https], preset: preset, target: target)
+            XCTAssertEqual(result.supportedNodeCount, 2)
+            XCTAssertEqual(result.skippedNodeCount, 2)
+            XCTAssertFalse(result.content.contains("SOCKS TLS"))
+            XCTAssertFalse(result.content.contains("SOCKS Reality"))
+            XCTAssertTrue(result.content.contains("Plain SOCKS"))
+            XCTAssertTrue(result.content.contains("HTTPS"))
+        }
+    }
+
+    func testNativeShadowsocksTLSIsSkippedWithoutLosingPlainSS() {
+        let secure = node(.shadowsocks, name: "Native SS TLS", tls: true)
+        let plain = node(.shadowsocks, name: "Plain SS", tls: false)
+        for target: ClientTarget in [.singBox, .hiddify] {
+            let result = generator.generate(nodes: [secure, plain], preset: preset, target: target)
+            XCTAssertEqual(result.supportedNodeCount, 1)
+            XCTAssertEqual(result.skippedNodeCount, 1)
+            XCTAssertFalse(result.content.contains("Native SS TLS"))
+            XCTAssertTrue(result.content.contains("Plain SS"))
+        }
+        for target: ClientTarget in [.shadowrocket, .karing] {
+            XCTAssertEqual(generator.generate(nodes: [secure], preset: preset, target: target).supportedNodeCount, 1)
+        }
+    }
+
+    func testShadowsocksWebSocketUsesOnlySIP003Transport() throws {
+        var proxy = node(.shadowsocks, transport: "ws", tls: true)
+        proxy.plugin = "v2ray-plugin"
+        proxy.pluginMux = false
+        for target: ClientTarget in [.singBox, .hiddify] {
+            let object = try json(target, nodes: [proxy])
+            let outbounds = try XCTUnwrap(object["outbounds"] as? [[String: Any]])
+            let ss = try XCTUnwrap(outbounds.first { $0["type"] as? String == "shadowsocks" })
+            XCTAssertEqual(ss["plugin"] as? String, "v2ray-plugin")
+            let options = try XCTUnwrap(ss["plugin_opts"] as? String)
+            for option in ["mode=websocket", "mux=0", "tls", "host=hk.example.com", "path=/ws"] {
+                XCTAssertTrue(options.split(separator: ";").contains(Substring(option)), option)
+            }
+            XCTAssertNil(ss["transport"], "Shadowsocks schema only accepts the SIP003 plugin")
+            XCTAssertNil(ss["tls"], "TLS belongs inside the plugin")
+        }
     }
 
     func testYAMLNullFlowIsAbsentButQuotedCredentialsSurvive() throws {
@@ -118,6 +169,11 @@ final class SingBoxGenerationTests: XCTestCase {
         }
         let hiddify = try json(.hiddify, nodes: [proxy])
         XCTAssertNil(hiddify["endpoints"])
+        let wg = try XCTUnwrap((hiddify["outbounds"] as? [[String: Any]])?.first { $0["type"] as? String == "wireguard" })
+        XCTAssertNil(wg["address"])
+        XCTAssertEqual(wg["local_address"] as? [String], ["10.0.0.2/32", "fd00::2/128"])
+        XCTAssertEqual(wg["peer_public_key"] as? String, key)
+
         XCTAssertTrue((hiddify["outbounds"] as? [[String: Any]])?.contains { $0["type"] as? String == "wireguard" } == true)
     }
 
@@ -332,6 +388,15 @@ final class SingBoxGenerationTests: XCTestCase {
         )
     }
 
+    func testHiddifySkipsRemovedSSRWithoutDanglingReferences() {
+        let result = generator.generate(nodes: [node(.shadowsocksR, name: "RemovedSSR"), node(.shadowsocks, name: "WorkingSS")], preset: preset, target: .hiddify)
+        XCTAssertFalse(ClientTarget.hiddify.supports(.shadowsocksR))
+        XCTAssertEqual(result.skippedNodeCount, 1)
+        XCTAssertEqual(result.supportedNodeCount, 1)
+        XCTAssertFalse(result.content.contains("RemovedSSR"))
+        XCTAssertTrue(result.content.contains("WorkingSS"))
+    }
+
     func testOfficialSingBoxSkipsSSRAndLegacySnellButKeepsSnellV4() throws {
         let generated = generator.generate(
             nodes: [
@@ -490,7 +555,7 @@ final class SingBoxGenerationTests: XCTestCase {
         ]
 
         for (kind, type) in expected {
-            let config = try json(.hiddify, nodes: [node(kind)])
+            let config = try json(.hiddify, nodes: [node(kind, tls: kind == .socks5 ? false : nil)])
             let outbounds = try XCTUnwrap(config["outbounds"] as? [[String: Any]])
             XCTAssertTrue(
                 outbounds.contains { $0["type"] as? String == type },

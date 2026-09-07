@@ -704,7 +704,7 @@ struct SubscriptionParser {
             ? "wireguard://" + raw.dropFirst("wg://".count)
             : raw
         guard let components = URLComponents(string: normalized),
-              let rawHost = components.host else { return nil }
+              let rawHost = components.host, !rawHost.isEmpty else { return nil }
         let query = Dictionary((components.queryItems ?? []).map {
             ($0.name.lowercased(), $0.value ?? "")
         }) { _, new in new }
@@ -744,6 +744,7 @@ struct SubscriptionParser {
         var pluginTransport: String?
         var pluginPath: String?
         var pluginTLS = false
+        var pluginMux: Bool?
         if let queryIndex = payload.firstIndex(of: "?") {
             let query = String(payload[payload.index(after: queryIndex)...])
             // A SIP003 plugin changes how the node is dialled. simple-obfs is
@@ -761,6 +762,7 @@ struct SubscriptionParser {
                     obfsHost = options.host
                     pluginPath = options.path
                     pluginTLS = options.tls
+                    pluginMux = options.mux
                 } else {
                     return nil
                 }
@@ -796,6 +798,7 @@ struct SubscriptionParser {
             password: password,
             transport: pluginTransport,
             plugin: sip003Plugin,
+            pluginMux: pluginMux,
             tls: pluginTLS,
             hostHeader: obfsHost,
             path: pluginPath,
@@ -833,7 +836,7 @@ struct SubscriptionParser {
 
     private func v2rayPluginOptions(
         from plugin: String
-    ) -> (transport: String, host: String?, path: String?, tls: Bool)? {
+    ) -> (transport: String, host: String?, path: String?, tls: Bool, mux: Bool?)? {
         let parts = plugin.split(separator: ";", omittingEmptySubsequences: false).map {
             $0.trimmingCharacters(in: .whitespaces)
         }
@@ -842,6 +845,7 @@ struct SubscriptionParser {
         var host: String?
         var path: String?
         var tls = false
+        var mux: Bool?
         for part in parts.dropFirst() {
             let pair = part.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             let key = pair[0].lowercased()
@@ -855,11 +859,12 @@ struct SubscriptionParser {
             case "host", "obfs-host": host = value
             case "path": path = value
             case "tls": tls = boolString(value)
+            case "mux": mux = boolString(value)
             default: break
             }
         }
         guard ["websocket", "ws"].contains(mode.lowercased()) else { return nil }
-        return ("ws", host, path, tls)
+        return ("ws", host, path, tls, mux)
     }
 
     private func parseShadowsocksR(_ raw: String, sourceID: UUID?) -> ProxyNode? {
@@ -1499,6 +1504,7 @@ struct SubscriptionParser {
             var pluginTransport: String?
             var pluginPath: String?
             var pluginTLS = false
+            var pluginMux: Bool?
             // `obfs-param` is ShadowsocksR's key. Hysteria 2 spells the same
             // slot `obfs-password`, and reading only the SSR name left every
             // salamander node with a type and no password — which makes Mihomo
@@ -1507,7 +1513,12 @@ struct SubscriptionParser {
                 ?? dictionary["obfs-password"]
                 ?? dictionary["obfs_password"]
             if kind == .shadowsocks, let plugin = dictionary["plugin"]?.lowercased(), !plugin.isEmpty {
-                let options = parseInlineYAMLMap(dictionary["plugin-opts"] ?? "")
+                var options = parseInlineYAMLMap(dictionary["plugin-opts"] ?? "")
+                // The block YAML reader flattens nested scalar keys; inline
+                // plugin maps already have their own values and take priority.
+                for key in ["mode", "host", "path", "tls", "mux"] where options[key] == nil {
+                    options[key] = dictionary[key]
+                }
                 if plugin == "obfs" || plugin == "obfs-local" || plugin == "simple-obfs" {
                     obfsMode = options["mode"] ?? "http"
                     obfsHost = options["host"]
@@ -1517,6 +1528,7 @@ struct SubscriptionParser {
                     pluginTransport = "ws"
                     pluginPath = options["path"]
                     pluginTLS = boolString(options["tls"])
+                    pluginMux = options["mux"].map { boolString($0) }
                     obfsHost = options["host"]
                 } else {
                     rejected += 1
@@ -1550,6 +1562,7 @@ struct SubscriptionParser {
                 transportMode: normalizedTransport(dictionary["network"]) == "xhttp"
                     ? dictionary["mode"] : nil,
                 plugin: sip003Plugin,
+                pluginMux: pluginMux,
                 // TLS is part of the Trojan protocol itself. Mihomo therefore
                 // omits the redundant `tls: true` field in valid Trojan nodes;
                 // treating that omission as plaintext breaks every strict
@@ -1722,6 +1735,13 @@ struct SubscriptionParser {
                 result["grpc-service-name"] = options["grpc-service-name"]
                     ?? options["service-name"]
             }
+        }
+        // HTTP camouflage accepts a list of alternative request paths/Hosts.
+        // ProxyNode represents one request; retain one valid choice, not the
+        // YAML array spelling (which becomes a different HTTP header/path).
+        if normalizedTransport(result["network"]) == "http" {
+            result["path"] = clashYAMLScalar(result["path"])
+            result["host"] = clashYAMLScalar(result["host"])
         }
         return result
     }

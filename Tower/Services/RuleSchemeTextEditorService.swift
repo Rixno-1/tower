@@ -240,18 +240,24 @@ struct RuleSchemeTextEditorService {
             return "ruleset=\(ruleset.groupName),\(target)"
         }
         lines += scheme.groups.map { group in
-            var fields = [group.name, group.kind == .select ? "select" : "url-test"]
+            var fields = [group.name, group.kind.configurationType]
             fields += group.members.map { member in
                 switch member {
                 case .reference(let name): "[]\(name)"
                 case .nodePattern(let pattern): pattern
                 }
             }
-            if group.kind == .urlTest {
+            if [.urlTest, .fallback, .loadBalance].contains(group.kind) {
                 fields.append(group.testURLString ?? "http://www.gstatic.com/generate_204")
                 fields.append("\(group.interval ?? 300),,\(group.tolerance ?? 50)")
             }
             return "custom_proxy_group=\(fields.joined(separator: "`"))"
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        lines += scheme.groups.compactMap { group in
+            guard let data = try? encoder.encode(group) else { return nil }
+            return "tower_group_metadata=\(data.base64EncodedString())"
         }
         return lines.joined(separator: "\n") + "\n"
     }

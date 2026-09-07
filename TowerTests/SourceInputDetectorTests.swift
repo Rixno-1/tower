@@ -2,6 +2,30 @@ import XCTest
 @testable import Tower
 
 final class SourceInputDetectorTests: XCTestCase {
+    func testDetectsAllCanonicalNodeProtocolsAndAliases() throws {
+        let key = Data(repeating: 1, count: 32).base64EncodedString()
+        let detector = SourceInputDetector()
+        for kind in ProxyKind.allCases where kind != .unknown {
+            let node = ProxyNode(kind: kind, name: "Fixture", server: "example.com", port: 443,
+                cipher: "aes-128-gcm", password: "fixture", uuid: "11111111-1111-4111-8111-111111111111",
+                username: "fixture", tls: false, protocolName: "origin", obfs: "plain",
+                wireGuardPrivateKey: key, wireGuardPublicKey: key,
+                wireGuardIPv4: "10.0.0.2/32", wireGuardAllowedIPs: "0.0.0.0/0", rawURI: "")
+            let link = ProxyNodeShareLinkGenerator().canonicalLink(for: node)
+            XCTAssertEqual(detector.detect(link), .node(kind), "\(kind)")
+            if kind == .wireguard {
+                XCTAssertEqual(detector.detect(link.replacingOccurrences(of: "wireguard://", with: "wg://")), .node(.wireguard))
+                XCTAssertEqual(detector.detect("  \(link)\n"), .node(.wireguard))
+                XCTAssertEqual(detector.detect(link + "\n" + link.replacingOccurrences(of: "example.com", with: "second.example.com")), .nodeBatch(count: 2))
+            }
+            for (original, alias) in [("hysteria2://", "hy2://"), ("hysteria://", "hy://"), ("socks5://", "socks://")] where link.hasPrefix(original) {
+                XCTAssertEqual(detector.detect(link.replacingOccurrences(of: original, with: alias)), .node(kind))
+            }
+        }
+        XCTAssertEqual(detector.detect("wg://"), .unknown)
+        XCTAssertEqual(detector.detect("unrecognized://example.com"), .unknown)
+    }
+
     func testDetectsHTTPSSubscription() {
         XCTAssertEqual(
             SourceInputDetector().detect("https://example.com/api/v1/client/subscribe?token=secret"),

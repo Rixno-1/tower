@@ -504,6 +504,8 @@ struct ProxyNode: Identifiable, Codable, Hashable {
     /// SIP003 plugin used by Shadowsocks. simple-obfs continues to use
     /// `obfs`; this field distinguishes v2ray-plugin from ordinary SS obfs.
     var plugin: String?
+    /// nil means the source did not declare plugin multiplexing.
+    var pluginMux: Bool?
     var tls: Bool
     var sni: String?
     var hostHeader: String?
@@ -585,6 +587,7 @@ struct ProxyNode: Identifiable, Codable, Hashable {
         transport: String? = nil,
         transportMode: String? = nil,
         plugin: String? = nil,
+        pluginMux: Bool? = nil,
         tls: Bool = false,
         sni: String? = nil,
         hostHeader: String? = nil,
@@ -636,6 +639,7 @@ struct ProxyNode: Identifiable, Codable, Hashable {
         self.transport = transport
         self.transportMode = transportMode
         self.plugin = plugin
+        self.pluginMux = pluginMux
         self.tls = tls
         self.sni = sni
         self.hostHeader = hostHeader
@@ -690,7 +694,7 @@ struct ProxyNode: Identifiable, Codable, Hashable {
         var fields = [kind.rawValue, name, server.lowercased(), String(port)]
         fields.append(contentsOf: [cipher ?? "", password ?? "", uuid ?? "", username ?? ""])
         fields.append(contentsOf: [
-            transport ?? "", transportMode ?? "", plugin ?? "", tls ? "1" : "0",
+            transport ?? "", transportMode ?? "", plugin ?? "", pluginMux.map { $0 ? "1" : "0" } ?? "", tls ? "1" : "0",
             sni ?? "", hostHeader ?? "", path ?? "", alpn ?? ""
         ])
         fields.append(contentsOf: [
@@ -1293,9 +1297,9 @@ enum ClientTarget: String, CaseIterable, Identifiable, Codable {
             // TUIC and Hysteria 1 are absent for the same reason.
             [.shadowsocks, .shadowsocksR, .vmess, .vless, .trojan, .anytls, .socks5, .http].contains(kind)
         case .hiddify:
-            // No Snell: sing-box the project implements it, but the core
-            // Hiddify ships does not, so those nodes are skipped and counted.
-            kind != .unknown && kind != .snell
+            // Hiddify's shipped core rejects Snell and removed ShadowsocksR.
+            // Skip and count them rather than creating unusable outbounds.
+            kind != .unknown && kind != .snell && kind != .shadowsocksR
         case .singBox:
             // Official sing-box supports Snell but has no ShadowsocksR
             // outbound. Snell version validation is applied by the generator.
@@ -1813,13 +1817,15 @@ enum ExportFilePresentation {
 }
 
 struct GeneratedConfiguration {
+    let diagnostics: [String]
+    let hasInvalidPolicyReferences: Bool
     let target: ClientTarget
     let content: String
     let supportedNodeCount: Int
     let skippedNodeCount: Int
     /// Remote node counts are unknown until the target client refreshes.
     let remoteSourceCount: Int
-    var hasExportableProxies: Bool { supportedNodeCount > 0 || remoteSourceCount > 0 }
+    var hasExportableProxies: Bool { !hasInvalidPolicyReferences && (supportedNodeCount > 0 || remoteSourceCount > 0) }
     let ruleCount: Int
     let profileName: String
     let contentMode: ExportContentMode
@@ -1834,8 +1840,12 @@ struct GeneratedConfiguration {
         profileName: String = TowerBrand.localizedName,
         contentMode: ExportContentMode = .fullConfiguration,
         fileExtensionOverride: String? = nil,
-        remoteSourceCount: Int = 0
+        remoteSourceCount: Int = 0,
+        diagnostics: [String] = [],
+        hasInvalidPolicyReferences: Bool = false
     ) {
+        self.diagnostics = diagnostics
+        self.hasInvalidPolicyReferences = hasInvalidPolicyReferences
         self.target = target
         self.content = content
         self.supportedNodeCount = supportedNodeCount
@@ -1863,7 +1873,9 @@ struct GeneratedConfiguration {
             profileName: value,
             contentMode: contentMode,
             fileExtensionOverride: fileExtensionOverride,
-            remoteSourceCount: remoteSourceCount
+            remoteSourceCount: remoteSourceCount,
+            diagnostics: diagnostics,
+            hasInvalidPolicyReferences: hasInvalidPolicyReferences
         )
     }
 }

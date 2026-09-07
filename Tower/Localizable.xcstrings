@@ -7907,6 +7907,101 @@
         }
       }
     },
+    "Smart 已转换为自动测速，选路行为与 Surge 不同。": {
+      "extractionState": "stale",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لقد تم تحويل Smart إلى قياس السرعة التلقائي ويختلف سلوك التوجيه عن Surge."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart wurde auf automatische Geschwindigkeitsmessung umgestellt und das Routing-Verhalten unterscheidet sich von Surge."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart has been converted to latency-based selection; routing behavior differs from Surge."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart se ha convertido a medición automática de velocidad y el comportamiento de enrutamiento es diferente al de Surge."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart a été converti en mesure automatique de la vitesse et le comportement de routage est différent de Surge."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart telah diubah menjadi pengukuran kecepatan otomatis dan perilaku peruteannya berbeda dari Surge."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart は自動速度測定に変換されており、ルーティングの動作は Surge とは異なります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart가 자동 속도 측정으로 전환되었으며 라우팅 동작이 Surge와 다릅니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Smart foi convertido para medição automática de velocidade e o comportamento do roteamento é diferente do Surge."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart был преобразован в автоматическое измерение скорости, и поведение маршрутизации отличается от Surge."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart ได้รับการแปลงเป็นการวัดความเร็วอัตโนมัติ และพฤติกรรมการกำหนดเส้นทางแตกต่างจาก Surge"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart, otomatik hız ölçümüne dönüştürülmüştür ve yönlendirme davranışı Surge'den farklıdır."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông minh đã được chuyển đổi sang đo tốc độ tự động và hành vi định tuyến khác với Surge."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart 已转换为自动测速，选路行为与 Surge 不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart 已轉換為自動測速，選路行為與 Surge 不同。"
+          }
+        }
+      }
+    },
     "Snell 版本必须是 1 到 6 之间的数字": {
       "localizations": {
         "ar": {
@@ -10259,7 +10354,6 @@
       }
     },
     "上移": {
-      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -10542,7 +10636,6 @@
       }
     },
     "下移": {
-      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -14491,6 +14584,100 @@
           "stringUnit": {
             "state": "translated",
             "value": "候選策略"
+          }
+        }
+      }
+    },
+    "候选策略不存在": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استراتيجية المرشح غير موجودة"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Kandidatenstrategie existiert nicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Candidate strategy does not exist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La estrategia candidata no existe"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La stratégie candidat n’existe pas"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strategi kandidat tidak ada"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "候補戦略が存在しません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "후보 전략이 존재하지 않습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A estratégia do candidato não existe"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стратегии кандидата не существует"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีกลยุทธ์ผู้สมัคร"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aday stratejisi mevcut değil"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiến lược ứng viên không tồn tại"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "候选策略不存在"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "候選策略不存在"
           }
         }
       }
@@ -23535,7 +23722,6 @@
       }
     },
     "向前移动": {
-      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -23630,7 +23816,6 @@
       }
     },
     "向后移动": {
-      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -31346,6 +31531,100 @@
         }
       }
     },
+    "已忽略当前客户端不支持的通知设置。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم تجاهل إعدادات الإعلام غير المدعومة من قبل العميل الحالي."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benachrichtigungseinstellungen, die vom aktuellen Client nicht unterstützt werden, wurden ignoriert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification settings not supported by the current client have been ignored."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se han ignorado las configuraciones de notificación que no son compatibles con el cliente actual."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les paramètres de notification non pris en charge par le client actuel ont été ignorés."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengaturan notifikasi yang tidak didukung oleh klien saat ini telah diabaikan."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のクライアントでサポートされていない通知設定は無視されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 클라이언트에서 지원하지 않는 알림 설정은 무시되었습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As configurações de notificação não suportadas pelo cliente atual foram ignoradas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки уведомлений, не поддерживаемые текущим клиентом, были проигнорированы."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การตั้งค่าการแจ้งเตือนที่ไม่รองรับโดยไคลเอนต์ปัจจุบันถูกละเว้น"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli istemci tarafından desteklenmeyen bildirim ayarları göz ardı edildi."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cài đặt thông báo không được ứng dụng khách hiện tại hỗ trợ đã bị bỏ qua."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已忽略当前客户端不支持的通知设置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已忽略目前客戶端不支援的通知設定。"
+          }
+        }
+      }
+    },
     "已恢复初始规则": {
       "localizations": {
         "ar": {
@@ -34169,6 +34448,100 @@
         }
       }
     },
+    "当前客户端不支持 Smart，已转换为延迟优选。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العميل الحالي لا يدعم Smart وتم تحويله إلى التفضيل المؤجل."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der aktuelle Client unterstützt Smart nicht und wurde auf verzögerte Präferenz umgestellt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This client does not support Smart. Latency-based selection will be used instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El cliente actual no es compatible con Smart y se ha convertido a preferencia retrasada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le client actuel ne prend pas en charge Smart et a été converti en préférence différée."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klien saat ini tidak mendukung Smart dan telah dikonversi ke preferensi tertunda."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のクライアントはスマートをサポートしていないため、遅延優先に変換されています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 클라이언트는 스마트를 지원하지 않아 지연 우선으로 전환되었습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O cliente atual não suporta Smart e foi convertido para preferência atrasada."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущий клиент не поддерживает Smart и был преобразован в отложенное предпочтение."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไคลเอนต์ปัจจุบันไม่รองรับ Smart และถูกแปลงเป็นการตั้งค่าแบบล่าช้า"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut istemci Smart'ı desteklemiyor ve gecikmeli tercihe dönüştürüldü."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ứng dụng khách hiện tại không hỗ trợ Thông minh và đã được chuyển đổi sang tùy chọn bị trì hoãn."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前客户端不支持 Smart，已转换为延迟优选。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前用戶端不支援 Smart，已轉換為延遲優選。"
+          }
+        }
+      }
+    },
     "当前机场没有提供可提前一天安排的到期时间；下次更新订阅后会自动检测。": {
       "localizations": {
         "ar": {
@@ -35581,6 +35954,7 @@
       }
     },
     "所有客户端均已显示": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -35957,6 +36331,7 @@
       }
     },
     "所有支持的客户端": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -38120,6 +38495,100 @@
         }
       }
     },
+    "按网络选择": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر حسب الشبكة"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Netzwerk auswählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network Selection"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar por red"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionner par réseau"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilih berdasarkan jaringan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ネットワークから選ぶ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네트워크로 선택"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione por rede"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать по сети"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกตามเครือข่าย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağa göre seç"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn theo mạng"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按网络选择"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按網路選擇"
+          }
+        }
+      }
+    },
     "排序": {
       "extractionState": "stale",
       "localizations": {
@@ -39444,6 +39913,7 @@
       }
     },
     "支持 Stash、Clash、Clash Mi、Karing、Surge、Loon、QuanX 和 Egern。原始订阅链接会写入配置并交给客户端更新，机场需返回对应客户端兼容的节点格式。远程节点不再应用塔台的单节点勾选、协议筛选、名称追加和自定义 DoH；非 Clash 系也不能沿用自定义 User-Agent。": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -40379,6 +40849,100 @@
           "stringUnit": {
             "state": "translated",
             "value": "收起鍵盤"
+          }
+        }
+      }
+    },
+    "故障转移": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تجاوز الفشل"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failover"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallback"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conmutación por error"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "basculement"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kegagalan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フェイルオーバー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "장애 조치"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "failover"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "аварийное переключение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เฟลโอเวอร์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yük devretme"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chuyển đổi dự phòng"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "故障转移"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "故障轉移"
           }
         }
       }
@@ -43205,6 +43769,100 @@
         }
       }
     },
+    "更改策略类型会改变选路行为，并清除原类型专用参数。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيؤدي تغيير نوع السياسة إلى تغيير سلوك التوجيه ومسح المعلمات الأصلية الخاصة بالنوع."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durch das Ändern des Richtlinientyps wird das Routing-Verhalten geändert und die ursprünglichen typspezifischen Parameter gelöscht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing the policy type will change the routing behavior and clear the original type-specific parameters."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar el tipo de política cambiará el comportamiento de enrutamiento y borrará los parámetros específicos del tipo original."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modification du type de stratégie modifiera le comportement de routage et effacera les paramètres spécifiques au type d’origine."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mengubah tipe kebijakan akan mengubah perilaku perutean dan menghapus parameter khusus tipe asli."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシー タイプを変更すると、ルーティング動作が変更され、元のタイプ固有のパラメータがクリアされます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 유형을 변경하면 라우팅 동작이 변경되고 원래 유형별 매개변수가 지워집니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterar o tipo de política alterará o comportamento do roteamento e limpará os parâmetros originais específicos do tipo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение типа политики приведет к изменению поведения маршрутизации и очистке исходных параметров, специфичных для типа."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเปลี่ยนประเภทนโยบายจะเปลี่ยนพฤติกรรมการกำหนดเส้นทางและล้างพารามิเตอร์เฉพาะประเภทดั้งเดิม"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlke türünün değiştirilmesi, yönlendirme davranışını değiştirecek ve orijinal türe özgü parametreleri temizleyecektir."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc thay đổi loại chính sách sẽ thay đổi hành vi định tuyến và xóa các tham số dành riêng cho loại ban đầu."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改策略类型会改变选路行为，并清除原类型专用参数。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "變更策略類型會改變選路行為，並清除原型別專用參數。"
+          }
+        }
+      }
+    },
     "更新": {
       "localizations": {
         "ar": {
@@ -44810,6 +45468,7 @@
       }
     },
     "未显示的客户端会列在这里，点一下即可加入上方。局域网共享始终保留在导出界面。": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -45181,6 +45840,100 @@
           "stringUnit": {
             "state": "translated",
             "value": "未知協議"
+          }
+        }
+      }
+    },
+    "未知策略": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استراتيجية غير معروفة"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unbekannte Strategie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown Policy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "estrategia desconocida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stratégie inconnue"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "strategi yang tidak diketahui"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知の戦略"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없는 전략"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "estratégia desconhecida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "неизвестная стратегия"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กลยุทธ์ที่ไม่รู้จัก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bilinmeyen strateji"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chiến lược chưa biết"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知策略"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知策略"
           }
         }
       }
@@ -52429,6 +53182,7 @@
       }
     },
     "由客户端更新订阅": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -52523,6 +53277,7 @@
       }
     },
     "留空则使用域名": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -52612,6 +53367,100 @@
           "stringUnit": {
             "state": "translated",
             "value": "留空則使用域名"
+          }
+        }
+      }
+    },
+    "留空则使用文件名": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اتركه فارغًا لاستخدام اسم الملف"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lassen Sie das Feld leer, um den Dateinamen zu verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave blank to use filename"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjelo en blanco para usar el nombre de archivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laisser vide pour utiliser le nom de fichier"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biarkan kosong untuk menggunakan nama file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル名を使用するには空白のままにしてください"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 이름을 사용하려면 비워 두세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixe em branco para usar o nome do arquivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставьте поле пустым, чтобы использовать имя файла"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เว้นว่างไว้เพื่อใช้ชื่อไฟล์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya adını kullanmak için boş bırakın"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để trống để sử dụng tên tập tin"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空则使用文件名"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空則使用檔名"
           }
         }
       }
@@ -54587,6 +55436,758 @@
           "stringUnit": {
             "state": "translated",
             "value": "等待有效的訂閱連結或節點協議"
+          }
+        }
+      }
+    },
+    "策略类型": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نوع الإستراتيجية"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strategietyp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy Type"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de estrategia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type de stratégie"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipe strategi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戦略タイプ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전략 유형"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de estratégia"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип стратегии"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประเภทกลยุทธ์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strateji türü"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loại chiến lược"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略类型"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略類型"
+          }
+        }
+      }
+    },
+    "策略组“%@”已兼容转换为%@，不支持的参数已忽略。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم تحويل مجموعة السياسات «%@» إلى %@ للتوافق. تم تجاهل الخيارات غير المدعومة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Richtliniengruppe „%@“ wurde zur Kompatibilität in %@ umgewandelt. Nicht unterstützte Optionen wurden ignoriert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy group “%@” was converted to %@ for compatibility. Unsupported options were ignored."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El grupo «%@» se convirtió a %@ por compatibilidad. Se omitieron las opciones no compatibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe « %@ » a été converti en %@ pour assurer la compatibilité. Les options non prises en charge ont été ignorées."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup kebijakan “%@” dikonversi ke %@ untuk kompatibilitas. Opsi yang tidak didukung diabaikan."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループ「%@」を互換性のため%@に変換しました。未対応の設定は無視されました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "호환성을 위해 정책 그룹 “%@”을(를) %@으로 변환했습니다. 지원하지 않는 옵션은 무시했습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O grupo “%@” foi convertido em %@ para compatibilidade. As opções não compatíveis foram ignoradas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Группа «%@» преобразована в %@ для совместимости. Неподдерживаемые параметры пропущены."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แปลงกลุ่มนโยบาย “%@” เป็น %@ เพื่อความเข้ากันได้ และละเว้นตัวเลือกที่ไม่รองรับ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ilke grubu uyumluluk için %@ türüne dönüştürüldü. Desteklenmeyen seçenekler yok sayıldı."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm chính sách “%@” đã được chuyển thành %@ để tương thích. Các tùy chọn không được hỗ trợ đã bị bỏ qua."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组“%@”已兼容转换为%@，不支持的参数已忽略。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略群組「%@」已相容轉換為%@，不支援的參數已忽略。"
+          }
+        }
+      }
+    },
+    "策略组“%@”没有匹配节点，已设为拒绝连接。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تحتوي مجموعة السياسات \"%@\" على عقد مطابقة وتم تعيينها لرفض الاتصالات."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Richtliniengruppe „%@“ hat keine passenden Knoten und wurde so eingestellt, dass sie Verbindungen ablehnt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy group \"%@\" has no matching nodes and has been set to refuse connections."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El grupo de políticas \"%@\" no tiene nodos coincidentes y se ha configurado para rechazar conexiones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe de stratégies « %@ » n'a aucun nœud correspondant et a été configuré pour refuser les connexions."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup kebijakan \"%@\" tidak memiliki node yang cocok dan telah disetel untuk menolak koneksi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループ「%@」には一致するノードがないため、接続を拒否するように設定されています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹 \"%@\"에는 일치하는 노드가 없으며 연결을 거부하도록 설정되었습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O grupo de políticas \"%@\" não possui nós correspondentes e foi configurado para recusar conexões."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Группа политик «%@» не имеет соответствующих узлов и настроена на отказ в подключениях."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กลุ่มนโยบาย \"%@\" ไม่มีโหนดที่ตรงกันและได้รับการตั้งค่าให้ปฏิเสธการเชื่อมต่อ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" politika grubunda eşleşen düğüm yok ve bağlantıları reddedecek şekilde ayarlandı."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm chính sách \"%@\" không có nút phù hợp và đã được đặt thành từ chối kết nối."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组“%@”没有匹配节点，已设为拒绝连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略群組「%@」沒有匹配節點，已設為拒絕連線。"
+          }
+        }
+      }
+    },
+    "策略组“%@”的类型或参数（%@）无法在 %@ 中保持原意，请先修改策略组。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يمكن للنوع أو المعلمة (%2$@) لمجموعة السياسات \"%1$@\" الحفاظ على معناها الأصلي في %3$@. الرجاء تعديل مجموعة السياسات أولاً."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Typ oder Parameter (%2$@) der Richtliniengruppe „%1$@“ kann seine ursprüngliche Bedeutung in %3$@ nicht beibehalten. Bitte ändern Sie zuerst die Richtliniengruppe."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The type or parameter (%2$@) of the policy group \"%1$@\" cannot maintain its original meaning in %3$@. Please modify the policy group first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tipo o parámetro (%2$@) del grupo de políticas \"%1$@\" no puede mantener su significado original en %3$@. Primero modifique el grupo de políticas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le type ou le paramètre (%2$@) du groupe de politiques « %1$@ » ne peut pas conserver sa signification d'origine dans %3$@. Veuillez d'abord modifier le groupe de stratégies."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jenis atau parameter (%2$@) dari grup kebijakan \"%1$@\" tidak dapat mempertahankan arti aslinya di %3$@. Harap ubah grup kebijakan terlebih dahulu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループ「%1$@」のタイプまたはパラメーター (%2$@) は、%3$@ では元の意味を維持できません。まずポリシー グループを変更してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹 \"%1$@\"의 유형 또는 매개변수(%2$@)는 %3$@에서 원래 의미를 유지할 수 없습니다. 먼저 정책 그룹을 수정하십시오."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tipo ou parâmetro (%2$@) do grupo de políticas \"%1$@\" não pode manter seu significado original em %3$@. Modifique o grupo de políticas primeiro."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип или параметр (%2$@) группы политик «%1$@» не может сохранять свое первоначальное значение в %3$@. Сначала измените группу политик."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประเภทหรือพารามิเตอร์ (%2$@) ของกลุ่มนโยบาย \"%1$@\" ไม่สามารถรักษาความหมายดั้งเดิมใน %3$@ ได้ โปรดแก้ไขกลุ่มนโยบายก่อน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%1$@\" politika grubunun türü veya parametresi (%2$@), %3$@'deki orijinal anlamını koruyamaz. Lütfen önce politika grubunu değiştirin."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loại hoặc tham số (%2$@) của nhóm chính sách \"%1$@\" không thể duy trì ý nghĩa ban đầu trong %3$@. Vui lòng sửa đổi nhóm chính sách trước."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组“%1$@”的类型或参数（%2$@）无法在 %3$@ 中保持原意，请先修改策略组。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略組「%1$@」的型別或參數（%2$@）無法在 %3$@ 中保持原意，請先修改策略組。"
+          }
+        }
+      }
+    },
+    "策略组名称重复": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسم مجموعة السياسات مكرر"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doppelter Richtliniengruppenname"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate policy group name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de grupo de políticas duplicado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom du groupe de stratégies en double"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nama grup kebijakan duplikat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループ名が重複しています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹 이름이 중복되었습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome do grupo de políticas duplicado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторяющееся имя группы политик."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชื่อกลุ่มนโยบายซ้ำ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yinelenen politika grubu adı"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên nhóm chính sách trùng lặp"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组名称重复"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略群組名稱重複"
+          }
+        }
+      }
+    },
+    "策略组循环引用": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المرجع الدائري لمجموعة السياسات"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zirkelreferenz der Richtliniengruppe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy group circular reference"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referencia circular del grupo de políticas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Référence à la circulaire du groupe politique"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referensi melingkar kelompok kebijakan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループの循環参照"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹 순환 참조"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referência circular do grupo de políticas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Циклическая ссылка на группу политик"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การอ้างอิงแบบวงกลมของกลุ่มนโยบาย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politika grubu döngüsel referansı"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tham chiếu vòng tròn của nhóm chính sách"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组循环引用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略組循環引用"
+          }
+        }
+      }
+    },
+    "策略组校验失败（%@）：%@。请修正后导出。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فشل التحقق من مجموعة السياسات (%1$@): %2$@. يرجى التصحيح والتصدير."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überprüfung der Richtliniengruppe fehlgeschlagen (%1$@): %2$@. Bitte korrigieren und exportieren."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy group verification failed (%1$@): %2$@. Please correct and export."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error en la verificación del grupo de políticas (%1$@): %2$@. Por favor corrija y exporte."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la vérification du groupe de stratégies (%1$@) : %2$@. Veuillez corriger et exporter."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifikasi grup kebijakan gagal (%1$@): %2$@. Harap perbaiki dan ekspor."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシーグループの検証に失敗しました (%1$@): %2$@。修正してエクスポートしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹 확인 실패(%1$@): %2$@. 수정하여 내보내시기 바랍니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falha na verificação do grupo de políticas (%1$@): %2$@. Corrija e exporte."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка группы политик не удалась (%1$@): %2$@. Пожалуйста, исправьте и экспортируйте."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การตรวจสอบกลุ่มนโยบายล้มเหลว (%1$@): %2$@ กรุณาแก้ไขและส่งออก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politika grubu doğrulaması başarısız oldu (%1$@): %2$@. Lütfen düzeltin ve dışa aktarın."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác minh nhóm chính sách không thành công (%1$@): %2$@. Vui lòng sửa và xuất."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组校验失败（%1$@）：%2$@。请修正后导出。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略組校驗失敗（%1$@）：%2$@。請修正後導出。"
+          }
+        }
+      }
+    },
+    "策略组没有可用候选项": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد لدى مجموعة السياسات أي مرشحين متاحين"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für die Richtliniengruppe sind keine Kandidaten verfügbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policy group has no available candidates"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El grupo de políticas no tiene candidatos disponibles"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe de stratégies n'a aucun candidat disponible"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kelompok kebijakan tidak memiliki kandidat yang tersedia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポリシー グループには利用可能な候補がありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정책 그룹에 사용 가능한 후보가 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O grupo de políticas não tem candidatos disponíveis"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В группе политик нет доступных кандидатов"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กลุ่มนโยบายไม่มีผู้สมัครที่ว่าง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politika grubunda uygun aday yok"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm chính sách không có ứng viên nào trống"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略组没有可用候选项"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "策略群組沒有可用候選項"
           }
         }
       }
@@ -58826,6 +60427,100 @@
         }
       }
     },
+    "节点筛选表达式无效": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعبير عامل تصفية العقدة غير صالح"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Knotenfilterausdruck ist ungültig"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Node filter expression is invalid"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La expresión del filtro de nodo no es válida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'expression de filtre de nœud n'est pas valide"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekspresi filter simpul tidak valid"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ノードフィルター式が無効です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "노드 필터 표현식이 잘못되었습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A expressão do filtro de nó é inválida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недопустимое выражение фильтра узла."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นิพจน์ตัวกรองโหนดไม่ถูกต้อง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düğüm filtresi ifadesi geçersiz"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biểu thức bộ lọc nút không hợp lệ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节点筛选表达式无效"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "節點篩選表達式無效"
+          }
+        }
+      }
+    },
     "节点选择": {
       "localizations": {
         "ar": {
@@ -60425,6 +62120,100 @@
         }
       }
     },
+    "规则引用了不存在的策略组：%@。请修正规则后导出。": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تشير القاعدة إلى مجموعة سياسات غير موجودة: %@. يرجى تصحيح القواعد والتصدير."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Regel verweist auf eine Richtliniengruppe, die nicht existiert: %@. Bitte korrigieren Sie die Regeln und exportieren Sie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The rule references a policy group that does not exist: %@. Please correct the rules and export."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La regla hace referencia a un grupo de políticas que no existe: %@. Corrija las reglas y exporte."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La règle fait référence à un groupe de stratégies qui n'existe pas : %@. Veuillez corriger les règles et exporter."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aturan tersebut merujuk pada grup kebijakan yang tidak ada: %@. Harap perbaiki aturan dan ekspor."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このルールは、存在しないポリシー グループ %@ を参照しています。ルールを修正してエクスポートしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "규칙이 존재하지 않는 정책 그룹(%@)을 참조합니다. 규칙을 수정하고 내보내십시오."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A regra faz referência a um grupo de políticas que não existe: %@. Corrija as regras e exporte."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правило ссылается на несуществующую группу политик: %@. Пожалуйста, исправьте правила и экспортируйте."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กฎอ้างอิงถึงกลุ่มนโยบายที่ไม่มีอยู่: %@ โปรดแก้ไขกฎและส่งออก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kural, var olmayan bir politika grubuna başvuruyor: %@. Lütfen kuralları düzeltin ve dışa aktarın."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quy tắc tham chiếu đến nhóm chính sách không tồn tại: %@. Vui lòng sửa các quy tắc và xuất khẩu."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则引用了不存在的策略组：%@。请修正规则后导出。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "規則引用了不存在的策略群組：%@。請修正規則後導出。"
+          }
+        }
+      }
+    },
     "规则方案已更新": {
       "localizations": {
         "ar": {
@@ -60893,6 +62682,100 @@
           "stringUnit": {
             "state": "translated",
             "value": "規則目錄"
+          }
+        }
+      }
+    },
+    "规则目标不存在": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هدف القاعدة غير موجود"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regelziel existiert nicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule target does not exist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El destino de la regla no existe"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cible de la règle n'existe pas"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target aturan tidak ada"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルールターゲットが存在しません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "규칙 대상이 존재하지 않습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O destino da regra não existe"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цель правила не существует"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีเป้าหมายของกฎ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kural hedefi mevcut değil"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu quy tắc không tồn tại"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则目标不存在"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "規則目標不存在"
           }
         }
       }
@@ -64565,6 +66448,100 @@
         }
       }
     },
+    "负载均衡": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موازنة التحميل"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lastausgleich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load Balancing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "equilibrio de carga"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "équilibrage de charge"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "penyeimbangan beban"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "負荷分散"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로드 밸런싱"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "balanceamento de carga"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "балансировка нагрузки"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โหลดบาลานซ์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yük dengeleme"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cân bằng tải"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "负载均衡"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "負載平衡"
+          }
+        }
+      }
+    },
     "跟随方案": {
       "localizations": {
         "ar": {
@@ -67012,6 +68989,100 @@
         }
       }
     },
+    "配置包含无法安全转换的语法": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحتوي التكوين على بناء جملة لا يمكن تحويله بأمان"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Konfiguration enthält Syntax, die nicht sicher konvertiert werden kann"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration contains syntax that cannot be safely converted"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La configuración contiene una sintaxis que no se puede convertir de forma segura"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La configuration contient une syntaxe qui ne peut pas être convertie en toute sécurité"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konfigurasi berisi sintaksis yang tidak dapat dikonversi dengan aman"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "構成には安全に変換できない構文が含まれています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구성에 안전하게 변환할 수 없는 구문이 포함되어 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A configuração contém sintaxe que não pode ser convertida com segurança"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфигурация содержит синтаксис, который невозможно безопасно преобразовать."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การกำหนดค่ามีไวยากรณ์ที่ไม่สามารถแปลงได้อย่างปลอดภัย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yapılandırma güvenli bir şekilde dönüştürülemeyen sözdizimi içeriyor"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cấu hình chứa cú pháp không thể chuyển đổi một cách an toàn"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置包含无法安全转换的语法"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置包含无法安全转换的语法"
+          }
+        }
+      }
+    },
     "配置只保存在这台设备上": {
       "localizations": {
         "ar": {
@@ -67389,6 +69460,7 @@
       }
     },
     "配置管理": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {
@@ -68235,6 +70307,100 @@
         }
       }
     },
+    "链式代理": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وكيل السلسلة"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ketten-Proxy"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proxy Chain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "proxy de cadena"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "proxy en chaîne"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "proksi rantai"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チェーンプロキシ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체인 프록시"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "proxy de cadeia"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "цепной прокси"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พร็อกซีลูกโซ่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zincir vekili"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chuỗi proxy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链式代理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鏈式代理"
+          }
+        }
+      }
+    },
     "链接可能包含访问凭据，请只分享给可信设备。": {
       "localizations": {
         "ar": {
@@ -68896,6 +71062,7 @@
       }
     },
     "高级设置": {
+      "extractionState": "stale",
       "localizations": {
         "ar": {
           "stringUnit": {

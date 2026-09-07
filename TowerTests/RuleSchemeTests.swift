@@ -6,6 +6,114 @@ import XCTest
 final class RuleSchemeTests: XCTestCase {
     private let parser = RuleSchemeParser()
 
+    func testSurgeSmartIncludesFilteredSourceNodes() throws {
+        let source = """
+        [Proxy Group]
+        Main = select, US, All
+        US = smart,include-other-group=All,policy-regex-filter=(US|美国)
+        All = select,policy-path=https://example.com/sub
+        [Rule]
+        DOMAIN,example.com,US
+        FINAL,Main
+        """
+        let scheme = try parser.parse(text: source, id: "smart", name: "Smart", summary: "")
+        XCTAssertEqual(scheme.groups.map(\.name), ["Main", "US", "All"])
+        XCTAssertEqual(scheme.groups.first { $0.name == "US" }?.kind.rawValue, "smart")
+        let node = ProxyNode(kind: .trojan, name: "US 01", server: "us.example.com",
+                             port: 443, password: "test", rawURI: "")
+        let output = ConfigurationGenerator().generate(nodes: [node], scheme: scheme, target: .surge).content
+        XCTAssertTrue(output.contains("US = smart,"), output)
+        XCTAssertTrue(output.contains("DOMAIN,example.com,US"), output)
+        XCTAssertFalse(output.contains("US = select, DIRECT"), output)
+        let clash = ConfigurationGenerator().generate(nodes: [node], scheme: scheme, target: .clash).content
+        XCTAssertTrue(clash.contains("type: url-test"), clash)
+        let empty = ConfigurationGenerator().generate(nodes: [], scheme: scheme, target: .surge).content
+        XCTAssertTrue(empty.contains("US = select, REJECT"), empty)
+    }
+
+    func testSmartCopiesOnlyProxiesAndFiltersIncludedMembers() throws {
+        let source = """
+        [Proxy Group]
+        Smart = smart,JP Tokyo 02,DIRECT,Pool,include-other-group="Pool,Other",policy-regex-filter="(HK|US){1,2}"
+        Pool = select,HK 香港 01,DIRECT
+        Other = select,JP Tokyo 02
+        [Rule]
+        DOMAIN-SET,https://example.com/domains,Smart,extended-matching
+        FINAL,Smart
+        """
+        let scheme = try parser.parse(text: source, id: "members", name: "Smart", summary: "")
+        XCTAssertEqual(scheme.rulesets.first?.groupName, "Smart")
+        let output = ConfigurationGenerator().generate(nodes: nodes, scheme: scheme, target: .surge).content
+        let line = try XCTUnwrap(output.components(separatedBy: "\n").first { $0.hasPrefix("Smart =") })
+        XCTAssertTrue(line.contains("HK 香港 01"), line)
+        XCTAssertTrue(line.contains("JP Tokyo 02"), line) // explicit members are not filtered
+        XCTAssertFalse(line.contains("DIRECT"), line)
+        XCTAssertFalse(line.contains("Pool"), line)
+        let roundTrip = try JSONDecoder().decode(RuleScheme.self, from: JSONEncoder().encode(scheme))
+        XCTAssertEqual(roundTrip.groups, scheme.groups)
+    }
+
+    func testSmartConvertsAcrossEveryConfigurationClientAndReportsEmptyGroup() throws {
+        let source = """
+        [Proxy Group]
+        Smart = smart,include-all-proxies=true,policy-regex-filter=HK
+        [Rule]
+        FINAL,Smart
+        """
+        let scheme = try parser.parse(text: source, id: "clients", name: "Smart", summary: "")
+        for target in ClientTarget.allCases where target != .v2box {
+            let result = ConfigurationGenerator().generate(nodes: nodes, scheme: scheme, target: target)
+            let supportsSmart = target == .surge || target == .egern
+            XCTAssertFalse(result.content.isEmpty, target.rawValue)
+            XCTAssertFalse(result.hasInvalidPolicyReferences, target.rawValue)
+            XCTAssertEqual(result.diagnostics.isEmpty, supportsSmart, target.rawValue)
+            let empty = ConfigurationGenerator().generate(nodes: [], scheme: scheme, target: target)
+            XCTAssertFalse(empty.diagnostics.isEmpty, target.rawValue)
+        }
+    }
+
+    func testUnknownRulePolicyBlocksExport() throws {
+        let source = """
+        [Proxy Group]
+        Main = select, DIRECT
+        [Rule]
+        DOMAIN,example.com,Missing
+        FINAL,Main
+        """
+        let scheme = try parser.parse(text: source, id: "missing", name: "Missing", summary: "")
+        let result = ConfigurationGenerator().generate(nodes: nodes, scheme: scheme, target: .surge)
+        XCTAssertTrue(result.hasInvalidPolicyReferences)
+        XCTAssertTrue(result.content.isEmpty)
+        XCTAssertFalse(result.hasExportableProxies)
+        XCTAssertFalse(result.named("Test").diagnostics.isEmpty)
+    }
+
+    func testLegacySavedSurgeSchemeRecoversSmartGraphWithoutChangingIdentity() throws {
+        let source = """
+        [Proxy Group]
+        Main = select,US,DIRECT
+        US = smart,include-other-group=All,policy-regex-filter=US
+        All = select,policy-path=https://example.com/sub
+        [Rule]
+        DOMAIN,example.com,US
+        FINAL,Main
+        """
+        var legacy = try parser.parse(text: source, id: "existing", name: "My rules", summary: "Custom summary")
+        legacy.groups.removeAll { $0.name == "US" || $0.name == "All" }
+        legacy.groups[0] = RuleSchemeGroup(name: "Main", kind: .select,
+                                          members: [.nodePattern("^US$"), .reference("DIRECT")])
+        let migrated = parser.restoringLegacySmartGroups(in: legacy)
+        XCTAssertTrue(migrated.groups.contains { $0.name == "US" && $0.kind.rawValue == "smart" })
+        XCTAssertEqual(migrated.groups.first?.members.first, .reference("US"))
+        XCTAssertEqual(migrated.id, legacy.id)
+        XCTAssertEqual(migrated.name, legacy.name)
+        XCTAssertEqual(migrated.summary, legacy.summary)
+        XCTAssertEqual(parser.restoringLegacySmartGroups(in: migrated), migrated)
+        var noSource = legacy
+        noSource.rawConfigurationText = nil
+        XCTAssertEqual(parser.restoringLegacySmartGroups(in: noSource), noSource)
+    }
+
     private let sample = """
     [custom]
     ;注释行应当被忽略
@@ -612,7 +720,7 @@ final class RuleSchemeTests: XCTestCase {
         }
     }
 
-    func testGroupWithNoMatchingNodesFallsBackInsteadOfEmittingAnEmptyGroup() throws {
+    func testGroupWithNoMatchingNodesRejectsInsteadOfChangingTrafficToDirect() throws {
         let scheme = try parser.parse(
             text: """
             ruleset=A,[]FINAL
@@ -623,11 +731,10 @@ final class RuleSchemeTests: XCTestCase {
             summary: "t"
         )
 
-        let content = ConfigurationGenerator().generate(nodes: nodes, scheme: scheme, target: .surge).content
-        let line = try XCTUnwrap(
-            content.components(separatedBy: .newlines).first { $0.hasPrefix("A = ") }
-        )
-        XCTAssertTrue(line.contains("DIRECT"), line)
+        let result = ConfigurationGenerator().generate(nodes: nodes, scheme: scheme, target: .surge)
+        XCTAssertTrue(result.content.contains("A = select, REJECT"))
+        XCTAssertFalse(result.hasInvalidPolicyReferences)
+        XCTAssertFalse(result.diagnostics.isEmpty)
     }
 
     private func parse() throws -> RuleScheme {

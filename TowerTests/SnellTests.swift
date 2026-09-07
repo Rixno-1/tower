@@ -87,15 +87,36 @@ final class SnellTests: XCTestCase {
         }
     }
 
-    func testClashTargetsSkipSnellVersionFourAndAbove() throws {
+    func testStashSkipsModernSnellWithoutLeavingGroupReferences() {
+        let generator = ConfigurationGenerator()
+        let versions: [Int?] = [nil, 1, 2, 3, 4, 5, 6]
+        let nodes = versions.map { version in
+            ProxyNode(kind: .snell, name: "Snell-\(version ?? 0)", server: "example.com",
+                      port: 443, password: "fixture", version: version, rawURI: "")
+        }
+        let result = generator.generate(nodes: nodes, preset: RulePreset.builtIns[0], target: .clash)
+        XCTAssertEqual(result.supportedNodeCount, 4)
+        XCTAssertEqual(result.skippedNodeCount, 3)
+        for version in 0...3 {
+            XCTAssertTrue(result.content.contains("Snell-\(version)"))
+        }
+        for version in 4...6 {
+            XCTAssertFalse(result.content.contains("Snell-\(version)"), "Skipped nodes must not remain in policy groups")
+        }
+        let parsed = SubscriptionParser().parse(data: Data(result.content.utf8)).nodes
+        XCTAssertEqual(parsed.count, 4)
+        XCTAssertFalse(parsed.contains { ($0.version ?? 1) > 3 })
+    }
+
+    func testMihomoTargetsKeepSnellVersionFour() throws {
         let v4 = try XCTUnwrap(parser.parseURI(line))
         let v3 = try XCTUnwrap(parser.parseURI("HK = snell, 198.51.100.4, 443, psk=abc, version=3"))
 
-        // Clash and Stash implement Snell only up to version 3.
-        for target in [ClientTarget.clash, .clashApple, .clashMi] {
+        // Mihomo supports Snell v4/v5 independently of Stash.
+        for target in [ClientTarget.clashApple, .clashMi] {
             XCTAssertEqual(
                 ConfigurationGenerator().generate(nodes: [v4], preset: RulePreset.builtIns[0], target: target).skippedNodeCount,
-                1,
+                0,
                 target.name
             )
             XCTAssertEqual(

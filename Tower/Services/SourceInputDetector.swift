@@ -35,21 +35,12 @@ struct SourceInputDetector {
         }
 
         let lowercased = value.lowercased()
-        let explicitNodeSchemes = [
-            "ss://", "ssr://", "vmess://", "vless://", "trojan://",
-            "hysteria2://", "hy2://", "hysteria://", "hy://", "tuic://",
-            "anytls://", "socks5://", "socks://"
-        ]
-        if explicitNodeSchemes.contains(where: lowercased.hasPrefix),
+        // Share the parser's protocol support instead of maintaining another
+        // scheme list that can omit supported aliases (wireguard://, wg://).
+        // HTTP(S) remains ambiguous with subscription URLs and is handled below.
+        if !lowercased.hasPrefix("http://"), !lowercased.hasPrefix("https://"),
            let node = parser.parseURI(value) {
             return .node(node.kind)
-        }
-
-        // Snell is shared as a Surge proxy line rather than a URI, so it is
-        // recognised by that shape instead of by a scheme prefix.
-        if lowercased.contains("=") , lowercased.contains("snell"),
-           let node = parser.parseURI(value), node.kind == .snell {
-            return .node(.snell)
         }
 
         guard let components = URLComponents(string: value),

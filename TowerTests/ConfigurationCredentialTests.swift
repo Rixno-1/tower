@@ -56,7 +56,7 @@ final class ConfigurationCredentialTests: XCTestCase {
 
         let line = proxyLine(for: node, target: .loon, containing: "socks.example.com")
 
-        XCTAssertTrue(line.contains("\"user\",\"pw\""), line)
+        XCTAssertTrue(line.contains(",user,\"pw\""), line)
     }
 
     // MARK: - Quantumult X fidelity
