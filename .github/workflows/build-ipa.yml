@@ -27,26 +27,29 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode_16.0.app || true
           xcodebuild -version
 
-      - name: Build Tower.app (unsigned for sideloading)
+      - name: Build Tower.xcarchive
         run: |
-          mkdir -p build/output
-          xcodebuild \
+          mkdir -p build
+          xcodebuild archive \
             -project Tower.xcodeproj \
             -scheme Tower \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build/DerivedData \
+            -archivePath build/Tower.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="-" \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            CODE_SIGN_ENTITLEMENTS="" \
-            clean build
+            CODE_SIGN_IDENTITY="" \
+            clean archive
 
-      - name: Package unsigned IPA
+      - name: Package unsigned IPA from archive
         run: |
-          APP_PATH=$(find build/DerivedData -name "Tower.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Tower.app not found in build output!"
+          APP_PATH="build/Tower.xcarchive/Products/Applications/Tower.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Searching for Tower.app..."
+            APP_PATH=$(find build -name "Tower.app" -type d | head -n 1)
+          fi
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "Error: Tower.app not found in archive!"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
